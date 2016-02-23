@@ -1,0 +1,5 @@
+file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.cmake")
+list(REMOVE_ITEM SOURCES cmake_install.cmake)
+
+set(CMAKE_INSTALL_SHAREDIR share CACHE STRING "share directory path")
+install(FILES ${SOURCES} DESTINATION ${CMAKE_INSTALL_SHAREDIR}/cmake_helpers)
