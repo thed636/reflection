@@ -337,7 +337,8 @@ template <typename T, typename V>
 struct VisitMain : SelectType < T, V >::type {};
 
 template<typename T>
-struct SerializeVisitor {
+class SerializeVisitor {
+public:
     typedef T value_type;
     template<typename P>
     void onPodType(const P & /*p*/, const std::string /*name*/=std::string()) {};
@@ -375,7 +376,8 @@ struct SerializeVisitor {
 };
 
 template<typename T>
-struct DeserializeVisitor {
+class DeserializeVisitor {
+public:
     typedef T value_type;
     template<typename P>
     void onPodType(const P & /*p*/, const std::string /*name*/=std::string()) {};
@@ -392,13 +394,13 @@ struct DeserializeVisitor {
     void onSequenceEnd() {};
 
     template<typename P>
-    bool onOptional(P & p, const std::string /*name*/=std::string())
+    bool onOptional(P &, const std::string /*name*/=std::string())
     {
         return false;
     }
 
     template<typename P>
-    bool onSmartPointer(P & p, const std::string /*name*/=std::string())
+    bool onSmartPointer(P &, const std::string /*name*/=std::string())
     {
         return false;
     }

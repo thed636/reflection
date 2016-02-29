@@ -2,10 +2,6 @@ cmake_minimum_required (VERSION 2.6)
 
 project(reflection C CXX)
 
-set(reflection_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/reflection/include)
-set(gtest_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/googletest/googletest/include)
-set(gmock_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/googletest/googlemock/include)
-
 set(FLAGS
   "-Wall"
   "-Wextra"
@@ -32,6 +28,15 @@ find_package(Boost REQUIRED COMPONENTS
   context
 )
 
+find_library(yajl_LIBRARIES yajl)
+message(STATUS "yajl:" ${yajl_LIBRARIES})
+
+subdirs(googletest)
+
+set(reflection_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/reflection/include)
+set(gtest_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/googletest/googletest/include)
+set(gmock_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/googletest/googlemock/include)
+
 include_directories(${reflection_INCLUDE_DIR})
 include_directories(${gtest_INCLUDE_DIR})
 include_directories(${gmock_INCLUDE_DIR})
@@ -43,4 +48,4 @@ set(ext_CMAKE_ARGS
   -DCMAKE_CC_COMPILER=${CMAKE_CC_COMPILER}
 )
 
-subdirs (reflection http googletest)
+subdirs (reflection http)

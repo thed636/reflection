@@ -47,10 +47,10 @@ public:
             if( iters.top() == levels.top()->end() ) {
                 throw std::runtime_error("Nameless items iterator out of range in PtreeReader");
             }
-            p = iters.top()->second.get_value<P>();
+            p = iters.top()->second.template get_value<P>();
             ++iters.top();
         } else {
-            p = levels.top()->get<P>(ptree::path_type(name, '\0') );
+            p = levels.top()->template get<P>(ptree::path_type(name, '\0') );
         }
     }
 
