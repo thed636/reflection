@@ -120,13 +120,13 @@ public:
         } else if (tree.front().first.empty()) {
             onSequenceStart(tree, name);
             for (typename Ptree::const_iterator iter = tree.begin(); iter != tree.end(); ++iter) {
-                visitMain<const Ptree, JsonWriter<T> >::visit(iter->second, *this);
+                VisitMain<const Ptree, JsonWriter<T> >::visit(iter->second, *this);
             }
             onSequenceEnd();
         } else {
             onMapStart(tree, name);
             for (typename Ptree::const_iterator iter = tree.begin(); iter != tree.end(); ++iter) {
-                visitMain<const Ptree, JsonWriter<T> >::visit(iter->second, *this, iter->first);
+                VisitMain<const Ptree, JsonWriter<T> >::visit(iter->second, *this, iter->first);
             }
             onMapEnd();
         }

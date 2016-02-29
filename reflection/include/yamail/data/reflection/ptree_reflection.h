@@ -31,10 +31,10 @@ struct visitConstPtree {
 };
 
 template <typename V>
-struct visitMain<ptree, V>: visitPtree<V>::type {};
+struct VisitMain<ptree, V>: visitPtree<V>::type {};
 
 template <typename V>
-struct visitMain<const ptree, V>: visitConstPtree<V>::type {};
+struct VisitMain<const ptree, V>: visitConstPtree<V>::type {};
 
 }}}
 
