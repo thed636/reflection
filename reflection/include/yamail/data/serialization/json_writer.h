@@ -8,13 +8,18 @@ namespace yamail { namespace data { namespace serialization {
 
 using namespace yamail::data::reflection;
 
+class JsonError : public std::runtime_error {
+public:
+    JsonError(const std::string& msg) : std::runtime_error(msg) {}
+};
+
 template<typename T>
 class JsonWriter : public SerializeVisitor<T> {
 
     typedef boost::shared_ptr<yajl_gen_t> GeneratorPtr;
 
 public:
-    explicit JsonWriter (const T & value, const std::string& rootName) :
+    explicit JsonWriter (const T & value, const Name& rootName) :
         defaultValueName("value"),
         gen(createGenerator())
     {
@@ -40,50 +45,50 @@ public:
         return NULL;
     }
 
-    void onPodType(const float f, const std::string name=std::string()) {
+    void onPodType(const float f, const Name& name = noName()) {
         onPodType(static_cast<const double>(f),name);
     }
 
-    void onPodType(const double d, const std::string name=std::string()) {
+    void onPodType(const double d, const Name& name = noName()) {
         if( !name.empty() )
                 addString( name );
         checkError( yajl_gen_double(gen.get(), d) );
     }
 
-    void onPodType(const int i, const std::string name=std::string()) {
+    void onPodType(const int i, const Name& name = noName()) {
         onPodType(static_cast<const long>(i),name);
     }
 
-    void onPodType(const long l, const std::string name=std::string()) {
+    void onPodType(const long l, const Name& name = noName()) {
         if( !name.empty() )
                 addString( name );
         checkError( yajl_gen_integer(gen.get(), l) );
     }
 
-    void onPodType(const size_t s, const std::string name=std::string()) {
+    void onPodType(const size_t s, const Name& name = noName()) {
         if( !name.empty() )
                 addString( name );
         checkError( yajl_gen_integer(gen.get(), s) );
     }
 
-    void onPodType(const bool b, const std::string name=std::string()) {
+    void onPodType(const bool b, const Name& name = noName()) {
         if( !name.empty() )
                 addString( name );
         checkError( yajl_gen_bool(gen.get(), b) );
     }
 
-    void onPodType(const std::string & s, const std::string name=std::string()) {
+    void onPodType(const std::string & s, const Name& name = noName()) {
         if( !name.empty() )
             addString( name );
         addString(s);
     }
 
     template<typename P>
-    void onPodType(const P & p, const std::string name=std::string()) {
+    void onPodType(const P& p, const Name& name = noName()) {
         onPodType ( boost::lexical_cast<std::string>(p), name );
     }
 
-    void onStructStart(const std::string name=std::string()) {
+    void onStructStart(const Name& name = noName()) {
         if( !name.empty() )
                 addString( name );
         checkError ( yajl_gen_map_open(gen.get()) );
@@ -94,7 +99,7 @@ public:
     }
 
     template<typename P>
-	void onMapStart(const P & /*p*/, const std::string name=std::string()) {
+	void onMapStart(const P& , const Name& name = noName()) {
         onStructStart(name);
     }
 
@@ -103,7 +108,7 @@ public:
     }
 
     template<typename P>
-	void onSequenceStart(const P & /*p*/, const std::string name=std::string()) {
+	void onSequenceStart(const P& , const Name& name = noName()) {
         if( !name.empty() )
                 addString( name );
         checkError(yajl_gen_array_open(gen.get()));
@@ -114,7 +119,7 @@ public:
     }
 
     template <typename Ptree>
-    void onPtree(const Ptree& tree, const std::string& name = "") {
+    void onPtree(const Ptree& tree, const Name& name = noName()) {
         if (tree.size() == 0) {
             onPodType(tree.data(), name);
         } else if (tree.front().first.empty()) {
@@ -137,14 +142,14 @@ private:
         if ( errorCode != yajl_gen_status_ok ) {
             std::stringstream s;
             s << "JsonWriter error " << errorCode;
-            throw std::runtime_error(s.str());
+            throw JsonError(s.str());
         }
     }
 
     GeneratorPtr createGenerator() const {
         GeneratorPtr result( yajl_gen_alloc(NULL),  yajl_gen_free );
         if (result.get() == NULL) {
-            throw std::runtime_error("yajl_gen_alloc failed");
+            throw JsonError("yajl_gen_alloc failed");
         }
         return result;
     }

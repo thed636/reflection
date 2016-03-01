@@ -30,7 +30,8 @@
 
 namespace yamail { namespace data { namespace reflection {
 
-#define ATR_UNUSED __attribute__((unused))
+using Name = std::string;
+inline Name noName() { return Name(); }
 
 template <typename T, typename V>
 struct VisitMain;
@@ -43,9 +44,11 @@ class DeserializeVisitor;
 
 template <typename T, typename V>
 struct VisitBase {
+
     typedef VisitBase<T,V> type;
-    static void visit (T & value, V & v, const std::string name=std::string() ) {
-        v.onPodType(value,name);
+
+    static void visit (T & value, V & v, const Name& name = noName() ) {
+        v.onPodType(value, name);
     };
 };
 
@@ -57,8 +60,10 @@ struct is_optional< boost::optional< T > > : public boost::mpl::true_ { };
 
 template <typename T, typename V>
 struct VisitOptional {
+
     typedef VisitOptional<T,V> type;
-    static void visit (T & optional, V & v,ATR_UNUSED const std::string name=std::string() ) {
+
+    static void visit (T & optional, V & v, const Name& name = noName() ) {
         if( v.onOptional( optional, name ) ) {
             VisitMain<typename T::value_type, V>::visit ( optional.get(), v, name );
         }
@@ -67,8 +72,10 @@ struct VisitOptional {
 
 template <typename T, typename V>
 struct VisitOptional<const T, V> {
+
     typedef VisitOptional<const T,V> type;
-    static void visit (const T & optional, V & v,ATR_UNUSED const std::string name=std::string() ) {
+
+    static void visit (const T & optional, V & v, const Name& name = noName() ) {
         if( v.onOptional( optional, name ) ) {
             VisitMain<const typename T::value_type, V>::visit ( optional.get(), v, name );
         }
@@ -83,8 +90,10 @@ struct is_pair< std::pair< T1 , T2 > > : public boost::mpl::true_ { };
 
 template <typename T, typename V>
 struct VisitPair {
+
     typedef VisitPair<T,V> type;
-    static void visit (T & pair, V & v,ATR_UNUSED const std::string name=std::string() ) {
+
+    static void visit (T & pair, V & v, const Name& = noName() ) {
         std::stringstream s;
         s << pair.first;
         VisitMain<typename T::second_type, V>::visit ( pair.second, v, s.str() );
@@ -93,8 +102,10 @@ struct VisitPair {
 
 template <typename T, typename V>
 struct VisitPair<const T, V> {
+
     typedef VisitPair<const T,V> type;
-    static void visit (const T & pair, V & v,ATR_UNUSED const std::string name=std::string() ) {
+
+    static void visit (const T & pair, V & v, const Name& = noName() ) {
         std::stringstream s;
         s << pair.first;
         VisitMain<const typename T::second_type, V>::visit ( pair.second, v, s.str() );
@@ -105,8 +116,10 @@ BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator)
 
 template <typename T, typename V>
 struct VisitContainer {
+
     typedef VisitContainer<T,V> type;
-    static void visit(T & cont, V & v, const std::string name=std::string() ) {
+
+    static void visit(T & cont, V & v, const Name& name = noName() ) {
         typedef typename T::iterator TIterator;
         typedef typename T::value_type TItem;
         v.onSequenceStart(cont, name);
@@ -119,8 +132,10 @@ struct VisitContainer {
 
 template <typename T, typename V>
 struct VisitContainer<const T, V> {
+
     typedef VisitContainer<const T,V> type;
-    static void visit(const T & cont, V & v, const std::string name=std::string() ) {
+
+    static void visit(const T & cont, V & v, const Name& name = noName() ) {
         typedef typename T::const_iterator TIterator;
         typedef const typename T::value_type TItem;
         v.onSequenceStart(cont, name);
@@ -135,8 +150,10 @@ BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type)
 
 template <typename T, typename V>
 struct VisitMap {
+
     typedef VisitMap<T,V> type;
-    static void visit(T & cont, V & v, const std::string name=std::string()) {
+
+    static void visit(T & cont, V & v, const Name& name = noName()) {
         typename T::iterator it;
         typedef typename T::value_type TItem;
         v.onMapStart(cont, name);
@@ -149,8 +166,10 @@ struct VisitMap {
 
 template <typename T, typename V>
 struct VisitMap<const T, V> {
+
     typedef VisitMap<const T,V> type;
-    static void visit(const T & cont, V & v, const std::string name=std::string()) {
+
+    static void visit(const T & cont, V & v, const Name& name = noName()) {
         typename T::const_iterator it;
         typedef const typename T::value_type TItem;
         v.onMapStart(cont, name);
@@ -163,29 +182,37 @@ struct VisitMap<const T, V> {
 
 template <typename T, typename V, typename N>
 struct VisitMember {
+
     typedef VisitMember<T,V,N> type;
+
     typedef typename boost::fusion::result_of::value_at <T, N>::type current;
+
     typedef typename boost::fusion::extension::struct_member_name <T , N::value> member;
-    static void visit (T & cvalue,  V & v, ATR_UNUSED const std::string name=std::string()) {
+
+    static void visit (T & cvalue,  V & v, const Name& = noName()) {
         VisitMain<current , V>::visit(boost::fusion::at<N>(cvalue), v, member::call() );
     }
 };
 
 template <typename T, typename V, typename N>
 struct VisitMember<const T, V, N> {
+
     typedef VisitMember<const T,V,N> type;
+
     typedef const typename boost::fusion::result_of::value_at <T, N>::type current;
+
     typedef typename boost::fusion::extension::struct_member_name <T , N::value> member;
-    static void visit (const T & cvalue,  V & v, ATR_UNUSED const std::string name=std::string()) {
+
+    static void visit (const T & cvalue,  V & v, const Name& = noName()) {
         VisitMain<current , V>::visit(boost::fusion::at<N>(cvalue), v, member::call() );
     }
 };
 
 
 template<typename T>
-std::pair<std::string, typename boost::remove_reference<typename T::result_type>::type > callWithName(T fun, const std::string& name) {
+std::pair<Name, typename boost::remove_reference<typename T::result_type>::type > callWithName(T fun, const Name& name) {
     size_t namespacesEndPos = name.find_last_of(':');
-    std::string funName = (namespacesEndPos == std::string::npos) ? name : name.substr(namespacesEndPos + 1);
+    auto funName = (namespacesEndPos == std::string::npos) ? name : name.substr(namespacesEndPos + 1);
     return std::make_pair(funName, fun());
 }
 
@@ -200,9 +227,12 @@ std::pair<std::string, typename boost::remove_reference<typename T::result_type>
 
 template <typename T, typename V, typename N, class Enabled = void>
 struct VisitMethod {
+
     typedef VisitMethod<T,V,N> type;
+
     typedef const typename boost::fusion::result_of::value_at <T, N>::type current;
-    static void visit (const T & cvalue,  V & v, ATR_UNUSED const std::string name=std::string()) {
+
+    static void visit (const T & cvalue,  V & v, const Name& = noName()) {
         current val = boost::fusion::at<N>(cvalue);
         VisitMain<current , V>::visit( val, v, "" );
     }
@@ -211,9 +241,12 @@ struct VisitMethod {
 template <typename T, typename V, typename N>
 struct VisitMethod<T, V, N, typename boost::enable_if<
         typename boost::is_base_of<DeserializeVisitor<typename V::value_type>, V > >::type > {
+
     typedef VisitMethod<T,V,N> type;
+
     typedef typename boost::fusion::result_of::value_at <T, N>::type current;
-    static void visit (T & cvalue, V & v, ATR_UNUSED const std::string name=std::string()) {
+
+    static void visit (T & cvalue, V & v, const Name& = noName()) {
         current buf = boost::fusion::at<N>(cvalue);
         VisitMain<current , V>::visit( buf, v, "" );
         boost::fusion::at<N>(cvalue) = buf;
@@ -224,10 +257,16 @@ BOOST_MPL_HAS_XXX_TRAIT_DEF(type)
 
 template <typename T, typename V, typename N>
 struct StructItem {
+
     typedef typename boost::mpl::next<N>::type next;
-    typedef typename boost::fusion::extension::struct_member_name <typename boost::remove_const<T>::type, N::value> member;
-    typedef typename boost::mpl::eval_if< has_type<member>, VisitMember<T,V,N>, VisitMethod<T,V,N> >::type item;
-    static void visit (T & cvalue,  V & v, ATR_UNUSED const std::string name=std::string()) {
+
+    typedef typename boost::fusion::extension::struct_member_name <
+            typename boost::remove_const<T>::type, N::value> member;
+
+    typedef typename boost::mpl::eval_if< has_type<member>, VisitMember<T,V,N>,
+            VisitMethod<T,V,N> >::type item;
+
+    static void visit (T & cvalue,  V & v, const Name& name = noName()) {
         item::visit(cvalue,v,name);
         StructItem<T, V, next>::visit(cvalue, v);
     }
@@ -235,7 +274,7 @@ struct StructItem {
 
 template <typename T, typename V>
 struct StructItem<T, V, typename boost::fusion::result_of::size<T>::type > {
-    static void visit (ATR_UNUSED T & cvalue,ATR_UNUSED V & v, ATR_UNUSED const std::string name=std::string()) {
+    static void visit ( T& , V& , const Name& = noName()) {
     }
 };
 
@@ -245,7 +284,8 @@ struct StructStart: StructItem< T, V, boost::mpl::int_< 0 > > {};
 template <typename T, typename V>
 struct VisitStruct {
     typedef VisitStruct<T, V> type;
-    static void visit (T & cvalue, V & v, const std::string name=std::string() ) {
+
+    static void visit (T& cvalue, V& v, const Name& name = noName() ) {
         v.onStructStart(name);
         StructStart<T,V>::visit(cvalue, v, name);
         v.onStructEnd();
@@ -254,10 +294,14 @@ struct VisitStruct {
 
 template <typename T, typename V>
 struct VisitArray {
+
     typedef VisitArray<T,V> type;
+
     typedef typename boost::remove_bounds<T>::type TItem;
+
     static const int size = sizeof(T) / sizeof(TItem);
-    static void visit (T & cvalue, V & v, const std::string name=std::string()) {
+
+    static void visit (T& cvalue, V& v, const Name& name = noName()) {
         v.onSequenceStart(cvalue, name);
         for ( int i = 0; i < size; i++) {
             VisitMain<TItem, V>::visit ( cvalue[i], v);
@@ -286,9 +330,12 @@ struct is_smart_ptr<boost::intrusive_ptr<T> > : public boost::mpl::true_ { };
 
 template <typename T, typename V>
 struct VisitSmartPtr {
+
     typedef VisitSmartPtr<T,V> type;
+
     typedef typename T::element_type InnerType;
-    static void visit (T& ptr, V& v, const std::string name = std::string()) {
+
+    static void visit (T& ptr, V& v, const Name& name = noName()) {
         if ( v.onSmartPointer( ptr, name ) ) {
             VisitMain<InnerType, V>::visit(*ptr, v, name);
         }
@@ -341,36 +388,34 @@ class SerializeVisitor {
 public:
     typedef T value_type;
     template<typename P>
-    void onPodType(const P & /*p*/, const std::string /*name*/=std::string()) {};
+    void onPodType(const P& , const Name& = noName()) {};
 
-    void onStructStart(const std::string /*name*/=std::string()) {};
+    void onStructStart(const Name& = noName()) {};
     void onStructEnd() {};
 
     template<typename P>
-    void onMapStart(const P & /*p*/, const std::string /*name*/=std::string()) {};
+    void onMapStart(const P& , const Name& = noName()) {};
     void onMapEnd() {};
 
     template<typename P>
-    void onSequenceStart(const P & /*p*/, const std::string /*name*/=std::string()) {};
+    void onSequenceStart(const P& , const Name& = noName()) {};
     void onSequenceEnd() {};
 
     template<typename P>
-    bool onOptional(const P & p, const std::string /*name*/=std::string())
-    {
+    bool onOptional(const P& p, const Name& = noName()) {
         return p.is_initialized();
     }
 
     template<typename P>
-    bool onSmartPointer(const P & p, const std::string /*name*/=std::string())
-    {
+    bool onSmartPointer(const P & p, const Name& = noName()) {
         return p.get();
     }
 
     template <typename Ptree>
-    void onPtree(const Ptree&, const std::string&) {}
+    void onPtree(const Ptree&, const Name&) {}
 
     template <typename V>
-    void visit(const T & value, V & v, const std::string name=std::string()) {
+    void visit(const T & value, V & v, const Name& name = noName()) {
         VisitMain<const T, V >::visit(value, v, name);
     }
 };
@@ -380,28 +425,26 @@ class DeserializeVisitor {
 public:
     typedef T value_type;
     template<typename P>
-    void onPodType(const P & /*p*/, const std::string /*name*/=std::string()) {};
+    void onPodType(P& , const Name& = noName()) {};
 
-    void onStructStart(const std::string /*name*/=std::string()) {};
+    void onStructStart(const Name& = noName()) {};
     void onStructEnd() {};
 
     template<typename P>
-    void onMapStart(P & /*p*/, const std::string /*name*/=std::string()) {};
+    void onMapStart(P& , const Name& = noName()) {};
     void onMapEnd() {};
 
     template<typename P>
-    void onSequenceStart(P & /*p*/, const std::string /*name*/=std::string()) {};
+    void onSequenceStart(P& , const Name& = noName()) {};
     void onSequenceEnd() {};
 
     template<typename P>
-    bool onOptional(P &, const std::string /*name*/=std::string())
-    {
+    bool onOptional(P& , const Name& = noName()) {
         return false;
     }
 
     template<typename P>
-    bool onSmartPointer(P &, const std::string /*name*/=std::string())
-    {
+    bool onSmartPointer(P& , const Name& = noName()) {
         return false;
     }
 
@@ -409,7 +452,7 @@ public:
     void onPtree(P&) {}
 
     template <typename V>
-    void visit(T & value, V & v, const std::string name=std::string()) {
+    void visit(T& value, V& v, const Name& name = noName()) {
         VisitMain<T, V >::visit(value, v, name);
     }
 };

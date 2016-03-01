@@ -13,7 +13,7 @@ using boost::property_tree::ptree;
 template<typename T>
 class PtreeWriter : public SerializeVisitor<T> {
 public:
-    explicit PtreeWriter ( const T & value, const std::string & rootName=std::string() )
+    explicit PtreeWriter ( const T & value, const Name & rootName=noName() )
     : defaultValueName("value")
     , inRootNode( true ) {
         levels.push(&root);
@@ -29,11 +29,11 @@ public:
     }
 
     template<typename P>
-    void onPodType(const P & p, const std::string name=std::string()) {
+    void onPodType(const P & p, const Name& name = noName()) {
         levels.top()->add(name.empty() ? defaultValueName : name, p);
     }
 
-    void onStructStart(const std::string name=std::string()) {
+    void onStructStart(const Name& name = noName()) {
          if( inRootNode ) {
             inRootNode = false;
             if( name.empty() )
@@ -47,7 +47,7 @@ public:
     }
 
     template<typename P>
-	void onMapStart(const P & /*p*/, const std::string name=std::string()) {
+	void onMapStart(const P& , const Name& name = noName()) {
         onStructStart(name);
     }
 
@@ -56,7 +56,7 @@ public:
     }
 
     template<typename P>
-	void onSequenceStart(const P & /*p*/, const std::string name=std::string()) {
+	void onSequenceStart(const P& , const Name& name = noName()) {
         onStructStart(name);
     }
 
