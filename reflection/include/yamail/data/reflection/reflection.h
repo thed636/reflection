@@ -28,6 +28,8 @@
 #include <boost/smart_ptr.hpp>
 #include <boost/optional.hpp>
 
+#include <boost/range/algorithm.hpp>
+
 namespace yamail { namespace data { namespace reflection {
 
 using Name = std::string;
@@ -35,6 +37,22 @@ inline Name noName() { return Name(); }
 
 template <typename T, typename V>
 struct VisitMain;
+
+namespace detail {
+
+template <typename T, typename V>
+void visit(T& t, V& v, const Name& name = noName()) {
+    VisitMain<T,V>::visit(t, v, name);
+}
+
+template <typename V>
+struct Visit {
+    V& v;
+    template <typename T>
+    void operator()(T& t) const { visit(t, v); }
+};
+
+}
 
 template<typename T>
 class SerializeVisitor;
@@ -65,19 +83,7 @@ struct VisitOptional {
 
     static void visit (T & optional, V & v, const Name& name = noName() ) {
         if( v.onOptional( optional, name ) ) {
-            VisitMain<typename T::value_type, V>::visit ( optional.get(), v, name );
-        }
-    };
-};
-
-template <typename T, typename V>
-struct VisitOptional<const T, V> {
-
-    typedef VisitOptional<const T,V> type;
-
-    static void visit (const T & optional, V & v, const Name& name = noName() ) {
-        if( v.onOptional( optional, name ) ) {
-            VisitMain<const typename T::value_type, V>::visit ( optional.get(), v, name );
+            detail::visit ( optional.get(), v, name );
         }
     };
 };
@@ -96,19 +102,7 @@ struct VisitPair {
     static void visit (T & pair, V & v, const Name& = noName() ) {
         std::stringstream s;
         s << pair.first;
-        VisitMain<typename T::second_type, V>::visit ( pair.second, v, s.str() );
-    };
-};
-
-template <typename T, typename V>
-struct VisitPair<const T, V> {
-
-    typedef VisitPair<const T,V> type;
-
-    static void visit (const T & pair, V & v, const Name& = noName() ) {
-        std::stringstream s;
-        s << pair.first;
-        VisitMain<const typename T::second_type, V>::visit ( pair.second, v, s.str() );
+        detail::visit ( pair.second, v, s.str() );
     };
 };
 
@@ -120,28 +114,8 @@ struct VisitContainer {
     typedef VisitContainer<T,V> type;
 
     static void visit(T & cont, V & v, const Name& name = noName() ) {
-        typedef typename T::iterator TIterator;
-        typedef typename T::value_type TItem;
         v.onSequenceStart(cont, name);
-        for (TIterator it = cont.begin(); it != cont.end(); it++) {
-            VisitMain<TItem, V>::visit ( *it, v );
-        }
-        v.onSequenceEnd();
-    }
-};
-
-template <typename T, typename V>
-struct VisitContainer<const T, V> {
-
-    typedef VisitContainer<const T,V> type;
-
-    static void visit(const T & cont, V & v, const Name& name = noName() ) {
-        typedef typename T::const_iterator TIterator;
-        typedef const typename T::value_type TItem;
-        v.onSequenceStart(cont, name);
-        for (TIterator it = cont.begin(); it != cont.end(); it++) {
-            VisitMain<TItem, V>::visit ( *it, v );
-        }
+        boost::for_each(cont, detail::Visit<V>{v});
         v.onSequenceEnd();
     }
 };
@@ -154,28 +128,8 @@ struct VisitMap {
     typedef VisitMap<T,V> type;
 
     static void visit(T & cont, V & v, const Name& name = noName()) {
-        typename T::iterator it;
-        typedef typename T::value_type TItem;
         v.onMapStart(cont, name);
-        for (it = cont.begin(); it != cont.end(); it++) {
-            VisitMain<TItem, V>::visit ( *it, v );
-        }
-        v.onMapEnd();
-    }
-};
-
-template <typename T, typename V>
-struct VisitMap<const T, V> {
-
-    typedef VisitMap<const T,V> type;
-
-    static void visit(const T & cont, V & v, const Name& name = noName()) {
-        typename T::const_iterator it;
-        typedef const typename T::value_type TItem;
-        v.onMapStart(cont, name);
-        for (it = cont.begin(); it != cont.end(); it++) {
-            VisitMain<TItem, V>::visit ( *it, v );
-        }
+        boost::for_each(cont, detail::Visit<V>{v});
         v.onMapEnd();
     }
 };
@@ -185,29 +139,13 @@ struct VisitMember {
 
     typedef VisitMember<T,V,N> type;
 
-    typedef typename boost::fusion::result_of::value_at <T, N>::type current;
-
-    typedef typename boost::fusion::extension::struct_member_name <T , N::value> member;
+    typedef typename boost::fusion::extension::struct_member_name <
+            typename boost::remove_const<T>::type , N::value> member;
 
     static void visit (T & cvalue,  V & v, const Name& = noName()) {
-        VisitMain<current , V>::visit(boost::fusion::at<N>(cvalue), v, member::call() );
+        detail::visit(boost::fusion::at<N>(cvalue), v, member::call() );
     }
 };
-
-template <typename T, typename V, typename N>
-struct VisitMember<const T, V, N> {
-
-    typedef VisitMember<const T,V,N> type;
-
-    typedef const typename boost::fusion::result_of::value_at <T, N>::type current;
-
-    typedef typename boost::fusion::extension::struct_member_name <T , N::value> member;
-
-    static void visit (const T & cvalue,  V & v, const Name& = noName()) {
-        VisitMain<current , V>::visit(boost::fusion::at<N>(cvalue), v, member::call() );
-    }
-};
-
 
 template<typename T>
 std::pair<Name, typename boost::remove_reference<typename T::result_type>::type > callWithName(T fun, const Name& name) {
@@ -234,7 +172,7 @@ struct VisitMethod {
 
     static void visit (const T & cvalue,  V & v, const Name& = noName()) {
         current val = boost::fusion::at<N>(cvalue);
-        VisitMain<current , V>::visit( val, v, "" );
+        detail::visit( val, v );
     }
 };
 
@@ -248,8 +186,8 @@ struct VisitMethod<T, V, N, typename boost::enable_if<
 
     static void visit (T & cvalue, V & v, const Name& = noName()) {
         current buf = boost::fusion::at<N>(cvalue);
-        VisitMain<current , V>::visit( buf, v, "" );
-        boost::fusion::at<N>(cvalue) = buf;
+        detail::visit( buf, v );
+        boost::fusion::at<N>(cvalue) = std::move(buf);
     }
 };
 
@@ -267,7 +205,7 @@ struct StructItem {
             VisitMethod<T,V,N> >::type item;
 
     static void visit (T & cvalue,  V & v, const Name& name = noName()) {
-        item::visit(cvalue,v,name);
+        item::visit(cvalue, v, name);
         StructItem<T, V, next>::visit(cvalue, v);
     }
 };
@@ -299,12 +237,12 @@ struct VisitArray {
 
     typedef typename boost::remove_bounds<T>::type TItem;
 
-    static const int size = sizeof(T) / sizeof(TItem);
+    static constexpr int size = sizeof(T) / sizeof(TItem);
 
     static void visit (T& cvalue, V& v, const Name& name = noName()) {
         v.onSequenceStart(cvalue, name);
         for ( int i = 0; i < size; i++) {
-            VisitMain<TItem, V>::visit ( cvalue[i], v);
+            detail::visit ( cvalue[i], v);
         }
         v.onSequenceEnd();
     }
@@ -333,11 +271,9 @@ struct VisitSmartPtr {
 
     typedef VisitSmartPtr<T,V> type;
 
-    typedef typename T::element_type InnerType;
-
     static void visit (T& ptr, V& v, const Name& name = noName()) {
         if ( v.onSmartPointer( ptr, name ) ) {
-            VisitMain<InnerType, V>::visit(*ptr, v, name);
+            detail::visit(*ptr, v, name);
         }
     }
 };
