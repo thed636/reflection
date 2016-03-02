@@ -148,7 +148,7 @@ struct VisitMember {
 };
 
 template<typename T>
-std::pair<Name, typename boost::remove_reference<typename T::result_type>::type > callWithName(T fun, const Name& name) {
+auto callWithName(T fun, const Name& name) -> decltype(std::make_pair(name, fun())) {
     size_t namespacesEndPos = name.find_last_of(':');
     auto funName = (namespacesEndPos == std::string::npos) ? name : name.substr(namespacesEndPos + 1);
     return std::make_pair(funName, fun());
