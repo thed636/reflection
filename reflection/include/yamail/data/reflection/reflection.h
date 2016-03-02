@@ -40,9 +40,9 @@ struct VisitMain;
 
 namespace detail {
 
-template <typename T, typename V>
-void visit(T& t, V& v, const Name& name = noName()) {
-    VisitMain<T,V>::visit(t, v, name);
+template <typename T, typename V, typename ... Args>
+void visit(T& t, V& v, Args && ... args ) {
+    VisitMain<T,V>::visit(t, v, std::forward<Args>(args)...);
 }
 
 template <typename V>
@@ -147,21 +147,30 @@ struct VisitMember {
     }
 };
 
-template<typename T>
-auto callWithName(T fun, const Name& name) -> decltype(std::make_pair(name, fun())) {
+// Deprecated
+inline Name stripMethodName(Name name) {
     size_t namespacesEndPos = name.find_last_of(':');
-    auto funName = (namespacesEndPos == std::string::npos) ? name : name.substr(namespacesEndPos + 1);
-    return std::make_pair(funName, fun());
+    return (namespacesEndPos == std::string::npos) ? std::move(name) : name.substr(namespacesEndPos + 1);
 }
 
-#define YR_CALL_WITH_SPECIFIC_NAME(fun, name) \
-    yamail::data::reflection::callWithName(boost::bind(&fun, boost::ref(obj)), name);
+#define YR_GET_WITH_SPECIFIC_NAME(fun, name)\
+    std::make_pair(Name(name), obj.fun())
 
+// Deprecated
+#define YR_CALL_WITH_SPECIFIC_NAME(fun, name) YR_GET_WITH_SPECIFIC_NAME(fun, name)
+
+#define YR_GET_WITH_NAME(fun) \
+    YR_CALL_WITH_SPECIFIC_NAME(fun, #fun)
+
+// Deprecated
 #define YR_CALL_WITH_NAME(fun) \
-    YR_CALL_WITH_SPECIFIC_NAME(fun, #fun);
+    YR_CALL_WITH_SPECIFIC_NAME(fun, stripMethodName(#fun))
 
-#define YR_CALL_SET_WITH_NAME(fun) \
+#define YR_SET_WITH_NAME(fun) \
     obj.fun( val.second );
+
+// Deprecated
+#define YR_CALL_SET_WITH_NAME(fun) YR_SET_WITH_NAME(fun)
 
 template <typename T, typename V, typename N, class Enabled = void>
 struct VisitMethod {
@@ -352,7 +361,7 @@ public:
 
     template <typename V>
     void visit(const T & value, V & v, const Name& name = noName()) {
-        VisitMain<const T, V >::visit(value, v, name);
+        detail::visit(value, v, name);
     }
 };
 
@@ -389,7 +398,7 @@ public:
 
     template <typename V>
     void visit(T& value, V& v, const Name& name = noName()) {
-        VisitMain<T, V >::visit(value, v, name);
+        detail::visit(value, v, name);
     }
 };
 
