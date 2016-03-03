@@ -13,28 +13,28 @@ using boost::property_tree::ptree;
  * for mapping between ptree and json
  */
 
-template <typename V>
+template <typename Visitor>
 struct visitPtree {
-    typedef visitPtree<V> type;
-    static void visit(ptree& tree, V& v, const std::string name = "") {
+    typedef visitPtree<Visitor> type;
+    static void apply(ptree& tree, Visitor& v, const Name& name = "") {
         v.onPtree(tree, name);
     }
 };
 
 
-template <typename V>
+template <typename Visitor>
 struct visitConstPtree {
-    typedef visitConstPtree<V> type;
-    static void visit(const ptree& tree, V& v, const std::string name = "") {
+    typedef visitConstPtree<Visitor> type;
+    static void apply(const ptree& tree, Visitor& v, const Name& name = "") {
         v.onPtree(tree, name);
     }
 };
 
-template <typename V>
-struct VisitMain<ptree, V>: visitPtree<V>::type {};
+template <typename Visitor>
+struct ApplyVisitor<ptree, Visitor>: visitPtree<Visitor>::type {};
 
-template <typename V>
-struct VisitMain<const ptree, V>: visitConstPtree<V>::type {};
+template <typename Visitor>
+struct ApplyVisitor<const ptree, Visitor>: visitConstPtree<Visitor>::type {};
 
 }}}
 

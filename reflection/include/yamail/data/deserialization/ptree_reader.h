@@ -20,7 +20,7 @@ public:
         levels.push( &pt );
         iters.push( pt.begin() );
 
-        this->visit( res, *this );
+        applyVisitor( res, *this );
     }
 
     T result() const {

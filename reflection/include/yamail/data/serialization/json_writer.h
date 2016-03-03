@@ -24,7 +24,7 @@ public:
         gen(createGenerator())
     {
         checkError ( yajl_gen_map_open(gen.get()) );
-        this->visit(value, *this, rootName);
+        applyVisitor(value, *this, rootName);
         checkError ( yajl_gen_map_close(gen.get()) );
     }
 
@@ -32,17 +32,17 @@ public:
         : defaultValueName("value")
         , gen(createGenerator())
     {
-        this->visit(value, *this);
+        applyVisitor(value, *this);
     }
 
     const char * result () {
-        const unsigned char *buf = NULL;
+        const unsigned char *buf = nullptr;
         std::size_t len;
         yajl_gen_get_buf(gen.get(), &buf, &len);
         if (buf) {
             return reinterpret_cast<const char *>(buf);
         }
-        return NULL;
+        return nullptr;
     }
 
     void onPodType(const float f, const Name& name = noName()) {
@@ -124,14 +124,14 @@ public:
             onPodType(tree.data(), name);
         } else if (tree.front().first.empty()) {
             onSequenceStart(tree, name);
-            for (typename Ptree::const_iterator iter = tree.begin(); iter != tree.end(); ++iter) {
-                VisitMain<const Ptree, JsonWriter<T> >::visit(iter->second, *this);
+            for (const auto& i : tree) {
+                applyVisitor(i.second, *this);
             }
             onSequenceEnd();
         } else {
             onMapStart(tree, name);
-            for (typename Ptree::const_iterator iter = tree.begin(); iter != tree.end(); ++iter) {
-                VisitMain<const Ptree, JsonWriter<T> >::visit(iter->second, *this, iter->first);
+            for (const auto& i : tree) {
+                applyVisitor(i.second, *this, i.first);
             }
             onMapEnd();
         }
@@ -147,8 +147,8 @@ private:
     }
 
     GeneratorPtr createGenerator() const {
-        GeneratorPtr result( yajl_gen_alloc(NULL),  yajl_gen_free );
-        if (result.get() == NULL) {
+        GeneratorPtr result( yajl_gen_alloc(nullptr),  yajl_gen_free );
+        if (result.get() == nullptr) {
             throw JsonError("yajl_gen_alloc failed");
         }
         return result;

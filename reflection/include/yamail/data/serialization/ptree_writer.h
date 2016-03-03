@@ -21,7 +21,7 @@ public:
              levels.push ( &(root.add_child(rootName,ptree())));
         }
 
-        this->visit(value, *this, rootName);
+        applyVisitor(value, *this, rootName);
     }
 
     ptree& result() {

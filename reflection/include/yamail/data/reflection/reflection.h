@@ -35,24 +35,26 @@ namespace yamail { namespace data { namespace reflection {
 using Name = std::string;
 inline Name noName() { return Name(); }
 
-template <typename T, typename V>
-struct VisitMain;
+template <typename T, typename Visitor>
+struct ApplyVisitor;
 
-namespace detail {
-
-template <typename T, typename V, typename ... Args>
-void visit(T& t, V& v, Args && ... args ) {
-    VisitMain<T,V>::visit(t, v, std::forward<Args>(args)...);
+template <typename T, typename Visitor, typename ... Args>
+void applyVisitor(T& t, Visitor& v, Args && ... args ) {
+    ApplyVisitor<T,Visitor>::apply(t, v, std::forward<Args>(args)...);
 }
 
 template <typename V>
-struct Visit {
+struct VisitorApplier {
     V& v;
     template <typename T>
-    void operator()(T& t) const { visit(t, v); }
+    void operator()(T& t) const { applyVisitor(t, v); }
 };
 
+template <typename Visitor>
+inline VisitorApplier<Visitor> makeApplier(Visitor& v) {
+    return VisitorApplier<Visitor>{v};
 }
+
 
 template<typename T>
 class SerializeVisitor;
@@ -60,12 +62,12 @@ class SerializeVisitor;
 template<typename T>
 class DeserializeVisitor;
 
-template <typename T, typename V>
-struct VisitBase {
+template <typename T, typename Visitor>
+struct ApplyPodVisitor {
 
-    typedef VisitBase<T,V> type;
+    typedef ApplyPodVisitor<T,Visitor> type;
 
-    static void visit (T & value, V & v, const Name& name = noName() ) {
+    static void apply (T & value, Visitor & v, const Name& name = noName() ) {
         v.onPodType(value, name);
     };
 };
@@ -76,74 +78,56 @@ struct is_optional : public boost::mpl::false_ { };
 template< class T >
 struct is_optional< boost::optional< T > > : public boost::mpl::true_ { };
 
-template <typename T, typename V>
-struct VisitOptional {
+template <typename T, typename Visitor>
+struct ApplyOptionalVisitor {
 
-    typedef VisitOptional<T,V> type;
+    typedef ApplyOptionalVisitor<T,Visitor> type;
 
-    static void visit (T & optional, V & v, const Name& name = noName() ) {
+    static void apply (T & optional, Visitor & v, const Name& name = noName() ) {
         if( v.onOptional( optional, name ) ) {
-            detail::visit ( optional.get(), v, name );
+            applyVisitor( optional.get(), v, name );
         }
-    };
-};
-
-template< class T >
-struct is_pair : public boost::mpl::false_ { };
-
-template< class T1 , class T2 >
-struct is_pair< std::pair< T1 , T2 > > : public boost::mpl::true_ { };
-
-template <typename T, typename V>
-struct VisitPair {
-
-    typedef VisitPair<T,V> type;
-
-    static void visit (T & pair, V & v, const Name& = noName() ) {
-        std::stringstream s;
-        s << pair.first;
-        detail::visit ( pair.second, v, s.str() );
     };
 };
 
 BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator)
 
-template <typename T, typename V>
-struct VisitContainer {
+template <typename T, typename Visitor>
+struct ApplyContainerVisitor {
 
-    typedef VisitContainer<T,V> type;
+    typedef ApplyContainerVisitor<T,Visitor> type;
 
-    static void visit(T & cont, V & v, const Name& name = noName() ) {
+    static void apply(T & cont, Visitor & v, const Name& name = noName() ) {
         v.onSequenceStart(cont, name);
-        boost::for_each(cont, detail::Visit<V>{v});
+        boost::for_each(cont, makeApplier(v));
         v.onSequenceEnd();
     }
 };
 
 BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type)
 
-template <typename T, typename V>
-struct VisitMap {
+template <typename T, typename Visitor>
+struct ApplyMapVisitor {
 
-    typedef VisitMap<T,V> type;
+    typedef ApplyMapVisitor<T,Visitor> type;
 
-    static void visit(T & cont, V & v, const Name& name = noName()) {
+    static void apply(T & cont, Visitor & v, const Name& name = noName()) {
         v.onMapStart(cont, name);
-        boost::for_each(cont, detail::Visit<V>{v});
+        boost::for_each(cont, makeApplier(v));
         v.onMapEnd();
     }
 };
 
-template <typename T, typename V, typename N>
-struct VisitMember {
+template <typename T, typename Visitor, typename N>
+struct ApplyMemberVisitor {
 
-    typedef VisitMember<T,V,N> type;
+    typedef ApplyMemberVisitor<T,Visitor,N> type;
 
     typedef typename boost::fusion::extension::struct_member_name <
             typename boost::remove_const<T>::type , N::value> member;
 
-    static void visit (T & cvalue,  V & v, const Name& = noName()) {
-        detail::visit(boost::fusion::at<N>(cvalue), v, member::call() );
+    static void apply (T & cvalue,  Visitor & v, const Name& = noName()) {
+        applyVisitor(boost::fusion::at<N>(cvalue), v, member::call() );
     }
 };
 
@@ -172,86 +156,108 @@ inline Name stripMethodName(Name name) {
 // Deprecated
 #define YR_CALL_SET_WITH_NAME(fun) YR_SET_WITH_NAME(fun)
 
-template <typename T, typename V, typename N, class Enabled = void>
-struct VisitMethod {
+template <typename T, typename Visitor, typename N, class Enabled = void>
+struct ApplyMethodVisitor {
 
-    typedef VisitMethod<T,V,N> type;
+    typedef ApplyMethodVisitor<T,Visitor,N> type;
 
     typedef const typename boost::fusion::result_of::value_at <T, N>::type current;
 
-    static void visit (const T & cvalue,  V & v, const Name& = noName()) {
+    static void apply (const T & cvalue,  Visitor & v, const Name& = noName()) {
         current val = boost::fusion::at<N>(cvalue);
-        detail::visit( val, v );
+        applyVisitor( val, v );
     }
 };
 
-template <typename T, typename V, typename N>
-struct VisitMethod<T, V, N, typename boost::enable_if<
-        typename boost::is_base_of<DeserializeVisitor<typename V::value_type>, V > >::type > {
+template <typename T, typename Visitor, typename N>
+struct ApplyMethodVisitor<T, Visitor, N, typename boost::enable_if<
+        typename boost::is_base_of<DeserializeVisitor<typename Visitor::value_type>, Visitor > >::type > {
 
-    typedef VisitMethod<T,V,N> type;
+    typedef ApplyMethodVisitor<T,Visitor,N> type;
 
     typedef typename boost::fusion::result_of::value_at <T, N>::type current;
 
-    static void visit (T & cvalue, V & v, const Name& = noName()) {
+    static void apply (T & cvalue, Visitor & v, const Name& = noName()) {
         current buf = boost::fusion::at<N>(cvalue);
-        detail::visit( buf, v );
+        applyVisitor( buf, v );
         boost::fusion::at<N>(cvalue) = std::move(buf);
     }
 };
 
 BOOST_MPL_HAS_XXX_TRAIT_DEF(type)
 
-template <typename T, typename V, typename N>
-struct StructItem {
+template <typename T, typename Visitor, typename N>
+struct ApplyStructItemVisitor {
 
     typedef typename boost::mpl::next<N>::type next;
 
     typedef typename boost::fusion::extension::struct_member_name <
             typename boost::remove_const<T>::type, N::value> member;
 
-    typedef typename boost::mpl::eval_if< has_type<member>, VisitMember<T,V,N>,
-            VisitMethod<T,V,N> >::type item;
+    typedef typename boost::mpl::eval_if< has_type<member>, ApplyMemberVisitor<T,Visitor,N>,
+            ApplyMethodVisitor<T,Visitor,N> >::type item;
 
-    static void visit (T & cvalue,  V & v, const Name& name = noName()) {
-        item::visit(cvalue, v, name);
-        StructItem<T, V, next>::visit(cvalue, v);
+    static void apply (T& cvalue,  Visitor& v, const Name& name = noName()) {
+        item::apply(cvalue, v, name);
+        ApplyStructItemVisitor<T, Visitor, next>::apply(cvalue, v);
     }
 };
 
-template <typename T, typename V>
-struct StructItem<T, V, typename boost::fusion::result_of::size<T>::type > {
-    static void visit ( T& , V& , const Name& = noName()) {
+template <typename T, typename Visitor>
+struct ApplyStructItemVisitor<T, Visitor, typename boost::fusion::result_of::size<T>::type > {
+    static void apply ( T& , Visitor& , const Name& = noName()) {
     }
 };
 
-template <typename T, typename V>
-struct StructStart: StructItem< T, V, boost::mpl::int_< 0 > > {};
+template <typename T, typename Visitor>
+struct ApplyStructFirstItemVisitor: ApplyStructItemVisitor< T, Visitor, boost::mpl::int_< 0 > > {};
 
-template <typename T, typename V>
-struct VisitStruct {
-    typedef VisitStruct<T, V> type;
+template <typename T, typename Visitor>
+struct ApplyStructVisitor {
+    typedef ApplyStructVisitor<T, Visitor> type;
 
-    static void visit (T& cvalue, V& v, const Name& name = noName() ) {
+    static void apply (T& cvalue, Visitor& v, const Name& name = noName() ) {
         v.onStructStart(name);
-        StructStart<T,V>::visit(cvalue, v, name);
+        ApplyStructFirstItemVisitor<T,Visitor>::apply(cvalue, v, name);
         v.onStructEnd();
     }
 };
 
-template <typename T, typename V>
-struct VisitArray {
+template< class T >
+struct is_pair : public boost::mpl::false_ { };
 
-    typedef VisitArray<T,V> type;
+template< class T1 , class T2 >
+struct is_pair< std::pair< T1 , T2 > > : public boost::mpl::true_ { };
+
+template <typename T, typename Visitor>
+struct ApplyPairVisitor {
+
+    typedef ApplyPairVisitor<T,Visitor> type;
+
+    static void apply (T & pair, Visitor & v) {
+        std::stringstream s;
+        s << pair.first;
+        applyVisitor( pair.second, v, s.str() );
+    };
+
+    static void apply (T & pair, Visitor & v, const Name& name) {
+        ApplyStructVisitor<T,Visitor>::apply( pair, v, name );
+    };
+};
+
+template <typename T, typename Visitor>
+struct ApplyArrayVisitor {
+
+    typedef ApplyArrayVisitor<T,Visitor> type;
 
     typedef typename boost::remove_bounds<T>::type TItem;
 
     static constexpr int size = sizeof(T) / sizeof(TItem);
 
-    static void visit (T& cvalue, V& v, const Name& name = noName()) {
+    static void apply (T& cvalue, Visitor& v, const Name& name = noName()) {
         v.onSequenceStart(cvalue, name);
         for ( int i = 0; i < size; i++) {
-            detail::visit ( cvalue[i], v);
+            applyVisitor ( cvalue[i], v);
         }
         v.onSequenceEnd();
     }
@@ -262,6 +268,12 @@ struct is_smart_ptr : public boost::mpl::false_ { };
 
 template <class T>
 struct is_smart_ptr<std::unique_ptr<T> > : public boost::mpl::true_ { };
+
+template <class T>
+struct is_smart_ptr<std::shared_ptr<T> > : public boost::mpl::true_ { };
+
+template <class T>
+struct is_smart_ptr<std::weak_ptr<T> > : public boost::mpl::true_ { };
 
 template <class T>
 struct is_smart_ptr<boost::shared_ptr<T> > : public boost::mpl::true_ { };
@@ -275,14 +287,14 @@ struct is_smart_ptr<boost::scoped_ptr<T> > : public boost::mpl::true_ { };
 template <class T>
 struct is_smart_ptr<boost::intrusive_ptr<T> > : public boost::mpl::true_ { };
 
-template <typename T, typename V>
-struct VisitSmartPtr {
+template <typename T, typename Visitor>
+struct ApplySmartPtrVisitor {
 
-    typedef VisitSmartPtr<T,V> type;
+    typedef ApplySmartPtrVisitor<T,Visitor> type;
 
-    static void visit (T& ptr, V& v, const Name& name = noName()) {
+    static void apply (T& ptr, Visitor& v, const Name& name = noName()) {
         if ( v.onSmartPointer( ptr, name ) ) {
-            detail::visit(*ptr, v, name);
+            applyVisitor(*ptr, v, name);
         }
     }
 };
@@ -292,41 +304,41 @@ struct SelectType {
     typedef
     typename boost::mpl::eval_if< has_iterator<T>,
         typename boost::mpl::eval_if< boost::is_same<typename boost::remove_const<T>::type,std::string>,
-            VisitBase<T, V>,
+            ApplyPodVisitor<T, V>,
         // else if is_same string
             typename boost::mpl::eval_if< has_mapped_type<T>,
-                VisitMap <T, V>,
+                ApplyMapVisitor <T, V>,
             // else if has_mapped_type
-                VisitContainer <T, V>
+                ApplyContainerVisitor <T, V>
             >
         >,
     // else if has_iterator
         typename boost::mpl::eval_if< boost::is_class<T>,
             typename boost::mpl::eval_if< is_pair<typename boost::remove_const<T>::type>,
-                VisitPair<T, V>,
+                ApplyPairVisitor<T, V>,
             // else if is_pair
                 typename boost::mpl::eval_if<is_smart_ptr<typename boost::remove_const<T>::type>,
-                    VisitSmartPtr<T, V>,
+                    ApplySmartPtrVisitor<T, V>,
                 // else if is_smart_ptr
                     typename boost::mpl::eval_if< is_optional<typename boost::remove_const<T>::type>,
-                        VisitOptional <T, V>,
+                        ApplyOptionalVisitor <T, V>,
                     //else if is_optional
-                        VisitStruct <T, V>
+                        ApplyStructVisitor <T, V>
                     >
                 >
             >,
         // else if is_class
             typename boost::mpl::eval_if< boost::is_array<T>,
-                VisitArray <T, V>,
+                ApplyArrayVisitor <T, V>,
             // else if is_array
-                VisitBase<T, V>
+                ApplyPodVisitor<T, V>
             >
         >
     >::type type;
 };
 
-template <typename T, typename V>
-struct VisitMain : SelectType < T, V >::type {};
+template <typename T, typename Visitor>
+struct ApplyVisitor : SelectType < T, Visitor >::type {};
 
 template<typename T>
 class SerializeVisitor {
@@ -360,8 +372,8 @@ public:
     void onPtree(const Ptree&, const Name&) {}
 
     template <typename V>
-    void visit(const T & value, V & v, const Name& name = noName()) {
-        detail::visit(value, v, name);
+    void apply(const T & value, V & v, const Name& name = noName()) {
+        applyVisitor(value, v, name);
     }
 };
 
@@ -397,8 +409,8 @@ public:
     void onPtree(P&) {}
 
     template <typename V>
-    void visit(T& value, V& v, const Name& name = noName()) {
-        detail::visit(value, v, name);
+    void apply(T& value, V& v, const Name& name = noName()) {
+        applyVisitor(value, v, name);
     }
 };
 
