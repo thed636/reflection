@@ -301,40 +301,45 @@ struct ApplySmartPtrVisitor {
 
 template <typename T, typename V>
 struct SelectType {
-    typedef
-    typename boost::mpl::eval_if< has_iterator<T>,
-        typename boost::mpl::eval_if< boost::is_same<typename boost::remove_const<T>::type,std::string>,
+
+    template <typename CondT, typename ThenT, typename ElseT>
+    using If = boost::mpl::eval_if< CondT, ThenT, ElseT >;
+
+    template <typename CondT>
+    using Else = CondT;
+
+    template <typename CondT, typename ThenT, typename ElseT>
+    using Elif = Else<If< CondT, ThenT, ElseT >>;
+
+    template <typename TT>
+    using Decay = typename boost::remove_const<TT>::type;
+
+    using Selector =
+    If< has_iterator<T>,
+        If< boost::is_same<Decay<T>,std::string>,
             ApplyPodVisitor<T, V>,
-        // else if is_same string
-            typename boost::mpl::eval_if< has_mapped_type<T>,
-                ApplyMapVisitor <T, V>,
-            // else if has_mapped_type
-                ApplyContainerVisitor <T, V>
-            >
-        >,
-    // else if has_iterator
-        typename boost::mpl::eval_if< boost::is_class<T>,
-            typename boost::mpl::eval_if< is_pair<typename boost::remove_const<T>::type>,
-                ApplyPairVisitor<T, V>,
-            // else if is_pair
-                typename boost::mpl::eval_if<is_smart_ptr<typename boost::remove_const<T>::type>,
-                    ApplySmartPtrVisitor<T, V>,
-                // else if is_smart_ptr
-                    typename boost::mpl::eval_if< is_optional<typename boost::remove_const<T>::type>,
-                        ApplyOptionalVisitor <T, V>,
-                    //else if is_optional
-                        ApplyStructVisitor <T, V>
-                    >
-                >
-            >,
-        // else if is_class
-            typename boost::mpl::eval_if< boost::is_array<T>,
-                ApplyArrayVisitor <T, V>,
-            // else if is_array
-                ApplyPodVisitor<T, V>
-            >
-        >
-    >::type type;
+        Elif< has_mapped_type<T>,
+            ApplyMapVisitor <T, V>,
+        Else<
+            ApplyContainerVisitor <T, V>
+        >>>,
+    Elif< boost::is_class<T>,
+        If< is_pair<Decay<T>>,
+            ApplyPairVisitor<T, V>,
+        Elif< is_smart_ptr<Decay<T>>,
+            ApplySmartPtrVisitor<T, V>,
+        Elif< is_optional<Decay<T>>,
+            ApplyOptionalVisitor <T, V>,
+        Else<
+            ApplyStructVisitor <T, V>
+        >>>>,
+    Elif< boost::is_array<T>,
+        ApplyArrayVisitor <T, V>,
+    Else<
+        ApplyPodVisitor<T, V>
+    >>>>;
+
+    using type = typename Selector::type;
 };
 
 template <typename T, typename Visitor>
