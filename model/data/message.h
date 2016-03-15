@@ -10,7 +10,13 @@ class Message {
 public:
     using Recipients = std::vector<Recipient>;
     using Body = std::string;
+    using Id = std::string;
+    using Subject = std::string;
 
+    // The message unique id
+    const Id& id() const;
+    // The message subject
+    const Subject& subject() const;
     // Here we have some structured data
     const Recipients& recipients() const;
     // Here we have huge plain text data

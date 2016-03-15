@@ -13,7 +13,7 @@
 namespace model {
 
 /**
- * E-mail abstraction "DisplayName" <Address>
+ * E-mail abstraction: "DisplayName" <Address>
  */
 struct Email {
     using DisplayName = std::string;

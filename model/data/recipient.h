@@ -16,6 +16,10 @@ struct Recipient {
     Email email;
 };
 
+inline bool operator < (const Recipient& l, const Recipient& r) {
+    return l.type != r.type ? l.type < r.type : l.email.address < r.email.address;
+}
+
 // These two functions are really pain - it would be nice to have a mechanism
 // to do not write such functions
 inline std::string toString(Recipient::Type t) {
