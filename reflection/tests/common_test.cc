@@ -79,6 +79,11 @@ struct BStruct {
 
 };
 
+struct ZStruct {
+    BStruct b;
+    int a;
+};
+
 bool operator==( const BStruct& lhs, const BStruct& rhs ) {
     return lhs.intItem == rhs.intItem
             && lhs.intMatrix == rhs.intMatrix
@@ -88,8 +93,18 @@ bool operator==( const BStruct& lhs, const BStruct& rhs ) {
             ;//&& lhs.stringMap == rhs.stringMap;
 }
 
-BOOST_FUSION_ADAPT_STRUCT( BStruct, ( int, intItem) (BStruct::TAObjArray , aObjArray)
-            (StringMap, stringMap) (BStruct::TIntMatrix, intMatrix) )
+BOOST_FUSION_ADAPT_STRUCT( BStruct,
+        ( int, intItem)
+        (BStruct::TAObjArray , aObjArray)
+        (StringMap, stringMap)
+        (BStruct::TIntMatrix, intMatrix) )
+
+BOOST_FUSION_ADAPT_STRUCT_NAMED_NS( BStruct const, (), BStruct2,
+        ( int, intItem) )
+
+BOOST_FUSION_ADAPT_STRUCT_NAMED_NS( ZStruct const, (), ZStruct2,
+        (const BStruct2, b)
+        ( int, a) )
 
 BOOST_FUSION_DEFINE_STRUCT(() , CStruct,
     ( BStruct, bObj)
@@ -104,6 +119,11 @@ void init( CStruct& c ) {
     c.doubleItem = 14.0;
     c.boolItem = true;
     c.optVector1 = std::vector<int>();
+}
+
+void init( ZStruct& c ) {
+    c.b.init();
+    c.a = 14.0;
 }
 
 bool operator==( const CStruct& lhs, const CStruct& rhs ) {
@@ -318,6 +338,19 @@ TEST(ReflectionTest, serializeCStructJson) {
         "\"doubleItem\":14.0,"
         "\"boolItem\":true,"
         "\"optVector1\":[]"
+"}";
+    ASSERT_EQ(expectedJson, r.str());
+}
+
+TEST(ReflectionTest, serializeZStructJson) {
+    ZStruct cObj;
+    init(cObj);
+    const auto r = yamail::data::serialization::toJson<ZStruct2>(cObj);
+    const std::string expectedJson = "{"
+        "\"b\":{"
+            "\"intItem\":100"
+        "},"
+        "\"a\":14.0"
 "}";
     ASSERT_EQ(expectedJson, r.str());
 }
