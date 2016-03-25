@@ -53,12 +53,9 @@ inline VisitorApplier<Visitor> makeApplier(Visitor& v) {
     return VisitorApplier<Visitor>{v};
 }
 
+struct SerializeVisitorTag;
 
-template<typename T>
-class SerializeVisitor;
-
-template<typename T>
-class DeserializeVisitor;
+struct DeserializeVisitorTag;
 
 template <typename T, typename Visitor>
 struct ApplyPodVisitor {
@@ -93,9 +90,9 @@ struct ApplyOptionalVisitor {
 BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator)
 
 template <typename T, typename Visitor>
-struct ApplyContainerVisitor {
+struct ApplySequenceVisitor {
 
-    typedef ApplyContainerVisitor<T,Visitor> type;
+    typedef ApplySequenceVisitor<T,Visitor> type;
 
     template <typename ... Name>
     static void apply(T & cont, Visitor & v, Name&& ... name) {
@@ -159,8 +156,11 @@ inline std::string stripMethodName(std::string name) {
 // Deprecated
 #define YR_CALL_SET_WITH_NAME(fun) YR_SET_WITH_NAME(fun)
 
-template <typename T, typename Visitor, typename N, class Enabled = void>
-struct ApplyMethodVisitor {
+template <typename T, typename Visitor, typename N, typename Tag = typename Visitor::tag>
+struct ApplyMethodVisitor;
+
+template <typename T, typename Visitor, typename N>
+struct ApplyMethodVisitor<T, Visitor, N, SerializeVisitorTag> {
 
     typedef ApplyMethodVisitor<T,Visitor,N> type;
 
@@ -174,8 +174,7 @@ struct ApplyMethodVisitor {
 };
 
 template <typename T, typename Visitor, typename N>
-struct ApplyMethodVisitor<T, Visitor, N, typename boost::enable_if<
-        typename boost::is_base_of<DeserializeVisitor<typename Visitor::value_type>, Visitor > >::type > {
+struct ApplyMethodVisitor<T, Visitor, N, DeserializeVisitorTag> {
 
     typedef ApplyMethodVisitor<T,Visitor,N> type;
 
@@ -243,34 +242,13 @@ struct ApplyPairVisitor {
     typedef ApplyPairVisitor<T,Visitor> type;
 
     static void apply (T & pair, Visitor & v) {
-        std::stringstream s;
-        s << pair.first;
-        applyVisitor( pair.second, v, s.str() );
+        applyVisitor( pair.second, v, pair.first );
     };
 
     template <typename Name>
     static void apply (T & pair, Visitor & v, Name&& name) {
         ApplyStructVisitor<T,Visitor>::apply( pair, v, std::forward<Name>(name) );
     };
-};
-
-template <typename T, typename Visitor>
-struct ApplyArrayVisitor {
-
-    typedef ApplyArrayVisitor<T,Visitor> type;
-
-    typedef typename boost::remove_bounds<T>::type TItem;
-
-    static constexpr int size = sizeof(T) / sizeof(TItem);
-
-    template <typename ... Name>
-    static void apply (T& cvalue, Visitor& v, Name&& ... name) {
-        v.onSequenceStart(cvalue, std::forward<Name>(name)...);
-        for ( int i = 0; i < size; i++) {
-            applyVisitor ( cvalue[i], v);
-        }
-        v.onSequenceEnd();
-    }
 };
 
 template <class T>
@@ -332,7 +310,7 @@ struct SelectType {
         Elif< has_mapped_type<T>,
             ApplyMapVisitor <T, V>,
         Else<
-            ApplyContainerVisitor <T, V>
+            ApplySequenceVisitor <T, V>
         >>>,
     Elif< boost::is_class<T>,
         If< is_pair<Decay<T>>,
@@ -345,7 +323,7 @@ struct SelectType {
             ApplyStructVisitor <T, V>
         >>>>,
     Elif< boost::is_array<T>,
-        ApplyArrayVisitor <T, V>,
+        ApplySequenceVisitor <T, V>,
     Else<
         ApplyPodVisitor<T, V>
     >>>>;
@@ -360,6 +338,8 @@ template<typename T>
 class SerializeVisitor {
 public:
     typedef T value_type;
+    typedef SerializeVisitorTag tag;
+
     template<typename P, typename ... Name>
     void onPodType(const P& , Name&& ...) {};
 
@@ -398,6 +378,8 @@ template<typename T>
 class DeserializeVisitor {
 public:
     typedef T value_type;
+    typedef DeserializeVisitorTag tag;
+
     template <typename P, typename ... Name>
     void onPodType(P& , Name&& ...) {};
 

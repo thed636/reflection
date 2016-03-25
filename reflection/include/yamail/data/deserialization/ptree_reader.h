@@ -112,10 +112,9 @@ public:
     }
 
     template <typename P, std::size_t N, typename ... Name>
-    void onSequenceStart(P (& p)[N], Name&& ... name) {
+    PtreeReader& onSequenceStart(P (& p)[N], Name&& ... name) {
         (void)p;
-        onStructStart(std::forward<Name>(name)...);
-
+        return onStructStart(std::forward<Name>(name)...);
     }
 
     void onSequenceEnd() {
