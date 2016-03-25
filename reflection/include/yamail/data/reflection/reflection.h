@@ -39,15 +39,15 @@ template <typename T, typename Visitor>
 struct ApplyVisitor;
 
 template <typename T, typename Visitor, typename ... Args>
-void applyVisitor(T&& t, Visitor& v, Args && ... args ) {
-    ApplyVisitor<T,Visitor>::apply(std::forward<T>(t), v, std::forward<Args>(args)...);
+void applyVisitor(T& t, Visitor& v, Args && ... args ) {
+    ApplyVisitor<T,Visitor>::apply(t, v, std::forward<Args>(args)...);
 }
 
 template <typename V>
 struct VisitorApplier {
     V& v;
     template <typename T>
-    void operator()(T&& t) const { applyVisitor(std::forward<T>(t), v); }
+    void operator()(T& t) const { applyVisitor(t, v); }
 };
 
 template <typename Visitor>
