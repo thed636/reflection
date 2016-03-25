@@ -88,10 +88,11 @@ public:
         onPodType ( boost::lexical_cast<std::string>(p), name );
     }
 
-    void onStructStart(const Name& name = noName()) {
+    JsonWriter& onStructStart(const Name& name = noName()) {
         if( !name.empty() )
                 addString( name );
         checkError ( yajl_gen_map_open(gen.get()) );
+        return *this;
     }
 
     void onStructEnd() {
@@ -99,8 +100,8 @@ public:
     }
 
     template<typename P>
-	void onMapStart(const P& , const Name& name = noName()) {
-        onStructStart(name);
+	JsonWriter& onMapStart(const P& , const Name& name = noName()) {
+        return onStructStart(name);
     }
 
     void onMapEnd() {
@@ -108,10 +109,11 @@ public:
     }
 
     template<typename P>
-	void onSequenceStart(const P& , const Name& name = noName()) {
+	JsonWriter& onSequenceStart(const P& , const Name& name = noName()) {
         if( !name.empty() )
                 addString( name );
         checkError(yajl_gen_array_open(gen.get()));
+        return *this;
     }
 
     void onSequenceEnd() {

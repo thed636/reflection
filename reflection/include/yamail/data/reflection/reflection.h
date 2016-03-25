@@ -98,8 +98,8 @@ struct ApplyContainerVisitor {
     typedef ApplyContainerVisitor<T,Visitor> type;
 
     static void apply(T & cont, Visitor & v, const Name& name = noName() ) {
-        v.onSequenceStart(cont, name);
-        boost::for_each(cont, makeApplier(v));
+        auto& internalsVisitor = v.onSequenceStart(cont, name);
+        boost::for_each(cont, makeApplier(internalsVisitor));
         v.onSequenceEnd();
     }
 };
@@ -112,8 +112,8 @@ struct ApplyMapVisitor {
     typedef ApplyMapVisitor<T,Visitor> type;
 
     static void apply(T & cont, Visitor & v, const Name& name = noName()) {
-        v.onMapStart(cont, name);
-        boost::for_each(cont, makeApplier(v));
+        auto& internalsVisitor = v.onMapStart(cont, name);
+        boost::for_each(cont, makeApplier(internalsVisitor));
         v.onMapEnd();
     }
 };
@@ -217,8 +217,8 @@ struct ApplyStructVisitor {
     typedef ApplyStructVisitor<T, Visitor> type;
 
     static void apply (T& cvalue, Visitor& v, const Name& name = noName() ) {
-        v.onStructStart(name);
-        ApplyStructFirstItemVisitor<T,Visitor>::apply(cvalue, v, name);
+        auto& internalsVisitor = v.onStructStart(name);
+        ApplyStructFirstItemVisitor<T,Visitor>::apply(cvalue, internalsVisitor, name);
         v.onStructEnd();
     }
 };
@@ -352,15 +352,15 @@ public:
     template<typename P>
     void onPodType(const P& , const Name& = noName()) {};
 
-    void onStructStart(const Name& = noName()) {};
+    SerializeVisitor& onStructStart(const Name& = noName()) { return *this;};
     void onStructEnd() {};
 
     template<typename P>
-    void onMapStart(const P& , const Name& = noName()) {};
+    SerializeVisitor& onMapStart(const P& , const Name& = noName()) { return *this;};
     void onMapEnd() {};
 
     template<typename P>
-    void onSequenceStart(const P& , const Name& = noName()) {};
+    SerializeVisitor& onSequenceStart(const P& , const Name& = noName()) { return *this;};
     void onSequenceEnd() {};
 
     template<typename P>
@@ -393,11 +393,11 @@ public:
     void onStructEnd() {};
 
     template<typename P>
-    void onMapStart(P& , const Name& = noName()) {};
+    DeserializeVisitor& onMapStart(P& , const Name& = noName()) { return *this; };
     void onMapEnd() {};
 
     template<typename P>
-    void onSequenceStart(P& , const Name& = noName()) {};
+    DeserializeVisitor& onSequenceStart(P& , const Name& = noName()) { return *this; };
     void onSequenceEnd() {};
 
     template<typename P>

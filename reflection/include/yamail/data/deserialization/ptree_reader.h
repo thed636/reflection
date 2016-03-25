@@ -54,7 +54,7 @@ public:
         }
     }
 
-    void onStructStart(const std::string& name=std::string()) {
+    PtreeReader& onStructStart(const std::string& name=std::string()) {
         if( inRootNode ) {
             inRootNode = false;
         } else {
@@ -66,6 +66,7 @@ public:
             }
             iters.push( levels.top()->begin() );
         }
+        return *this;
     }
 
     void onStructEnd() {
@@ -78,14 +79,15 @@ public:
     }
 
     template<typename P>
-    void onMapStart(P & p, const std::string& name=std::string()) {
+    PtreeReader& onMapStart(P & p, const std::string& name=std::string()) {
         onStructStart(name);
         if( notInNode() ) {
-            return;
+            return *this;
         }
         for( ptree::iterator it = levels.top()->begin() ; it != levels.top()->end(); ++it ) {
             p[it->first];
         }
+        return *this;
     }
 
     void onMapEnd() {
@@ -93,9 +95,10 @@ public:
     }
 
     template<typename P>
-    void onSequenceStart(P & p, const std::string& name=std::string()) {
+    PtreeReader& onSequenceStart(P & p, const std::string& name=std::string()) {
         onStructStart(name);
         p.resize( levels.top()->size() );
+        return *this;
     }
 
     template<typename P, std::size_t N>

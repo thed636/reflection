@@ -33,13 +33,14 @@ public:
         levels.top()->add(name.empty() ? defaultValueName : name, p);
     }
 
-    void onStructStart(const Name& name = noName()) {
+    PtreeWriter& onStructStart(const Name& name = noName()) {
          if( inRootNode ) {
             inRootNode = false;
             if( name.empty() )
-                return;
+                return *this;
         }
         levels.push( &(levels.top()->add_child(name.empty() ? defaultValueName : name, ptree())));
+        return *this;
     }
 
     void onStructEnd() {
@@ -47,8 +48,8 @@ public:
     }
 
     template<typename P>
-	void onMapStart(const P& , const Name& name = noName()) {
-        onStructStart(name);
+	PtreeWriter& onMapStart(const P& , const Name& name = noName()) {
+        return onStructStart(name);
     }
 
     void onMapEnd() {
@@ -56,8 +57,8 @@ public:
     }
 
     template<typename P>
-	void onSequenceStart(const P& , const Name& name = noName()) {
-        onStructStart(name);
+	PtreeWriter& onSequenceStart(const P& , const Name& name = noName()) {
+        return onStructStart(name);
     }
 
     void onSequenceEnd() {
