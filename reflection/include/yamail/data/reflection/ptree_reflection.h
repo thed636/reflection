@@ -16,8 +16,9 @@ using boost::property_tree::ptree;
 template <typename Visitor>
 struct visitPtree {
     typedef visitPtree<Visitor> type;
-    static void apply(ptree& tree, Visitor& v, const Name& name = "") {
-        v.onPtree(tree, name);
+    template <typename ... Name>
+    static void apply(ptree& tree, Visitor& v, Name&& ... name) {
+        v.onPtree(tree, std::forward<Name>(name)...);
     }
 };
 
@@ -25,8 +26,9 @@ struct visitPtree {
 template <typename Visitor>
 struct visitConstPtree {
     typedef visitConstPtree<Visitor> type;
-    static void apply(const ptree& tree, Visitor& v, const Name& name = "") {
-        v.onPtree(tree, name);
+    template <typename ... Name>
+    static void apply(const ptree& tree, Visitor& v, Name&& ... name) {
+        v.onPtree(tree, std::forward<Name>(name)...);
     }
 };
 

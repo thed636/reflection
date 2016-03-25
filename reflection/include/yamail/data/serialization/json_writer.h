@@ -19,7 +19,7 @@ class JsonWriter : public SerializeVisitor<T> {
     typedef boost::shared_ptr<yajl_gen_t> GeneratorPtr;
 
 public:
-    explicit JsonWriter (const T & value, const Name& rootName) :
+    explicit JsonWriter (const T& value, const std::string& rootName) :
         defaultValueName("value"),
         gen(createGenerator())
     {
@@ -45,52 +45,78 @@ public:
         return nullptr;
     }
 
-    void onPodType(const float f, const Name& name = noName()) {
-        onPodType(static_cast<const double>(f),name);
+    template <typename ... Name>
+    void onPodType(float f, Name&& ... name) {
+        onPodType(static_cast<const double>(f), std::forward<Name>(name)...);
     }
 
-    void onPodType(const double d, const Name& name = noName()) {
-        if( !name.empty() )
-                addString( name );
-        checkError( yajl_gen_double(gen.get(), d) );
+    template<typename Name>
+    void onPodType(double d, Name&& name) {
+        addString(name);
+        onPodType(d);
     }
 
-    void onPodType(const int i, const Name& name = noName()) {
-        onPodType(static_cast<const long>(i),name);
+    void onPodType(double d) {
+        checkError(yajl_gen_double(gen.get(), d));
     }
 
-    void onPodType(const long l, const Name& name = noName()) {
-        if( !name.empty() )
-                addString( name );
+    template <typename ... Name>
+    void onPodType(int i, Name&& ... name) {
+        onPodType(static_cast<const long>(i), std::forward<Name>(name)...);
+    }
+
+    template<typename Name>
+    void onPodType(long l, Name&& name) {
+        addString(name);
+        onPodType(l);
+    }
+
+    void onPodType(long l) {
         checkError( yajl_gen_integer(gen.get(), l) );
     }
 
-    void onPodType(const size_t s, const Name& name = noName()) {
-        if( !name.empty() )
-                addString( name );
+    template<typename Name>
+    void onPodType(std::size_t s, Name&& name) {
+        addString(name);
+        onPodType(s);
+    }
+
+    void onPodType(std::size_t s) {
         checkError( yajl_gen_integer(gen.get(), s) );
     }
 
-    void onPodType(const bool b, const Name& name = noName()) {
-        if( !name.empty() )
-                addString( name );
+    template<typename Name>
+    void onPodType(bool b, Name&& name) {
+        addString(name);
+        onPodType(b);
+    }
+
+    void onPodType(bool b) {
         checkError( yajl_gen_bool(gen.get(), b) );
     }
 
-    void onPodType(const std::string & s, const Name& name = noName()) {
-        if( !name.empty() )
-            addString( name );
+    template<typename Name>
+    void onPodType(const std::string & s, Name&& name) {
+        addString(name);
+        onPodType(s);
+    }
+
+    void onPodType(const std::string & s) {
         addString(s);
     }
 
-    template<typename P>
-    void onPodType(const P& p, const Name& name = noName()) {
-        onPodType ( boost::lexical_cast<std::string>(p), name );
+    template<typename P, typename ... Name>
+    void onPodType(const P& p, Name&& ... name) {
+        onPodType ( boost::lexical_cast<std::string>(p), std::forward<Name>(name)...);
     }
 
-    JsonWriter& onStructStart(const Name& name = noName()) {
-        if( !name.empty() )
-                addString( name );
+    template<typename Name>
+    JsonWriter& onStructStart(Name&& name) {
+        addString( name );
+        return onStructStart();
+    }
+
+    JsonWriter& onStructStart() {
         checkError ( yajl_gen_map_open(gen.get()) );
         return *this;
     }
@@ -99,19 +125,23 @@ public:
         checkError( yajl_gen_map_close(gen.get()) );
     }
 
-    template<typename P>
-	JsonWriter& onMapStart(const P& , const Name& name = noName()) {
-        return onStructStart(name);
+    template<typename Map, typename ... Name>
+	JsonWriter& onMapStart(const Map& , Name&& ... name) {
+        return onStructStart(std::forward<Name>(name)...);
     }
 
     void onMapEnd() {
         onStructEnd();
     }
 
+    template<typename Seq, typename Name>
+	JsonWriter& onSequenceStart(const Seq& seq, Name&& name) {
+        addString( name );
+        return onSequenceStart(seq);
+    }
+
     template<typename P>
-	JsonWriter& onSequenceStart(const P& , const Name& name = noName()) {
-        if( !name.empty() )
-                addString( name );
+    JsonWriter& onSequenceStart(const P&) {
         checkError(yajl_gen_array_open(gen.get()));
         return *this;
     }
@@ -120,18 +150,18 @@ public:
         checkError(yajl_gen_array_close(gen.get()));
     }
 
-    template <typename Ptree>
-    void onPtree(const Ptree& tree, const Name& name = noName()) {
+    template <typename Ptree, typename ... Name >
+    void onPtree(const Ptree& tree, Name&& ... name) {
         if (tree.size() == 0) {
-            onPodType(tree.data(), name);
+            onPodType(tree.data(), std::forward<Name>(name)...);
         } else if (tree.front().first.empty()) {
-            onSequenceStart(tree, name);
+            onSequenceStart(tree, std::forward<Name>(name)...);
             for (const auto& i : tree) {
                 applyVisitor(i.second, *this);
             }
             onSequenceEnd();
         } else {
-            onMapStart(tree, name);
+            onMapStart(tree, std::forward<Name>(name)...);
             for (const auto& i : tree) {
                 applyVisitor(i.second, *this, i.first);
             }

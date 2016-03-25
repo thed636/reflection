@@ -28,12 +28,13 @@ public:
         return res_;
     }
 
-    template<typename P>
-    void onPodType(P &, const std::string ) {
+    template <typename P, typename ... Name>
+    void onPodType(P& , Name&& ... ) {
         throw std::logic_error( "NYI" );
     }
 
-    void onStructStart(const std::string ) {
+    template <typename ... Name>
+    void onStructStart(Name&& ... ) {
         throw std::logic_error( "NYI" );
     }
 
@@ -41,7 +42,8 @@ public:
         throw std::logic_error( "NYI" );
     }
 
-    void onMapStart(const std::string ) {
+    template <typename Map, typename ... Name>
+    void onMapStart(Map& , Name&& ... ) {
         throw std::logic_error( "NYI" );
     }
 
@@ -49,7 +51,8 @@ public:
         throw std::logic_error( "NYI" );
     }
 
-    void onSequenceStart(const std::string ) {
+    template <typename Seq, typename ... Name>
+    void onSequenceStart(Seq& , Name&& ... ) {
         throw std::logic_error( "NYI" );
     }
 

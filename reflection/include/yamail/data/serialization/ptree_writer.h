@@ -13,14 +13,13 @@ using boost::property_tree::ptree;
 template<typename T>
 class PtreeWriter : public SerializeVisitor<T> {
 public:
-    explicit PtreeWriter ( const T & value, const Name & rootName=noName() )
-    : defaultValueName("value")
-    , inRootNode( true ) {
+    explicit PtreeWriter ( const T & value) {
         levels.push(&root);
-        if (!rootName.empty()) {
-             levels.push ( &(root.add_child(rootName,ptree())));
-        }
-
+        applyVisitor(value, *this);
+    }
+    explicit PtreeWriter ( const T & value, const std::string& rootName) {
+        levels.push(&root);
+        levels.push ( &(root.add_child(rootName,ptree())));
         applyVisitor(value, *this, rootName);
     }
 
@@ -28,37 +27,47 @@ public:
         return root;
     }
 
-    template<typename P>
-    void onPodType(const P & p, const Name& name = noName()) {
-        levels.top()->add(name.empty() ? defaultValueName : name, p);
+    template<typename P, typename Name>
+    void onPodType(const P & p, Name&& name) {
+        levels.top()->add(name, p);
     }
 
-    PtreeWriter& onStructStart(const Name& name = noName()) {
-         if( inRootNode ) {
-            inRootNode = false;
-            if( name.empty() )
-                return *this;
-        }
-        levels.push( &(levels.top()->add_child(name.empty() ? defaultValueName : name, ptree())));
+    template<typename P>
+    void onPodType(const P & p) {
+        onPodType(p, defaultValueName);
+    }
+
+    template <typename Name>
+    PtreeWriter& onStructStart(Name&& name) {
+        inRootNode = false;
+        levels.push( &(levels.top()->add_child(name, ptree())));
         return *this;
+    }
+
+    PtreeWriter& onStructStart() {
+        if( inRootNode ) {
+            inRootNode = false;
+            return *this;
+        }
+        return onStructStart(defaultValueName);
     }
 
     void onStructEnd() {
         levels.pop();
     }
 
-    template<typename P>
-	PtreeWriter& onMapStart(const P& , const Name& name = noName()) {
-        return onStructStart(name);
+    template<typename P, typename ... Name>
+	PtreeWriter& onMapStart(const P& , Name&& ... name) {
+        return onStructStart(std::forward<Name>(name)...);
     }
 
     void onMapEnd() {
         onStructEnd();
     }
 
-    template<typename P>
-	PtreeWriter& onSequenceStart(const P& , const Name& name = noName()) {
-        return onStructStart(name);
+    template<typename P, typename ... Name>
+	PtreeWriter& onSequenceStart(const P& , Name&& ... name) {
+        return onStructStart(std::forward<Name>(name)...);
     }
 
     void onSequenceEnd() {
@@ -66,10 +75,10 @@ public:
     }
 
 private:
-    std::string defaultValueName;
+    std::string defaultValueName = "value";
     std::stack < ptree* > levels;
     ptree root;
-    bool inRootNode;
+    bool inRootNode = true;
 };
 
 }}}

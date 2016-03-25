@@ -32,8 +32,6 @@
 
 namespace yamail { namespace data { namespace reflection {
 
-using Name = std::string;
-inline Name noName() { return Name(); }
 
 template <typename T, typename Visitor>
 struct ApplyVisitor;
@@ -67,8 +65,9 @@ struct ApplyPodVisitor {
 
     typedef ApplyPodVisitor<T,Visitor> type;
 
-    static void apply (T & value, Visitor & v, const Name& name = noName() ) {
-        v.onPodType(value, name);
+    template <typename ... Name>
+    static void apply (T & value, Visitor & v, Name&& ... name) {
+        v.onPodType(value, std::forward<Name>(name)...);
     };
 };
 
@@ -83,9 +82,10 @@ struct ApplyOptionalVisitor {
 
     typedef ApplyOptionalVisitor<T,Visitor> type;
 
-    static void apply (T & optional, Visitor & v, const Name& name = noName() ) {
-        if( v.onOptional( optional, name ) ) {
-            applyVisitor( optional.get(), v, name );
+    template <typename ... Name>
+    static void apply (T & optional, Visitor & v, Name&& ... name) {
+        if( v.onOptional(optional, std::forward<Name>(name)...) ) {
+            applyVisitor(optional.get(), v, std::forward<Name>(name)...);
         }
     };
 };
@@ -97,8 +97,9 @@ struct ApplyContainerVisitor {
 
     typedef ApplyContainerVisitor<T,Visitor> type;
 
-    static void apply(T & cont, Visitor & v, const Name& name = noName() ) {
-        auto& internalsVisitor = v.onSequenceStart(cont, name);
+    template <typename ... Name>
+    static void apply(T & cont, Visitor & v, Name&& ... name) {
+        auto& internalsVisitor = v.onSequenceStart(cont, std::forward<Name>(name)...);
         boost::for_each(cont, makeApplier(internalsVisitor));
         v.onSequenceEnd();
     }
@@ -111,8 +112,9 @@ struct ApplyMapVisitor {
 
     typedef ApplyMapVisitor<T,Visitor> type;
 
-    static void apply(T & cont, Visitor & v, const Name& name = noName()) {
-        auto& internalsVisitor = v.onMapStart(cont, name);
+    template <typename ... Name>
+    static void apply(T & cont, Visitor & v, Name&& ... name) {
+        auto& internalsVisitor = v.onMapStart(cont, std::forward<Name>(name)...);
         boost::for_each(cont, makeApplier(internalsVisitor));
         v.onMapEnd();
     }
@@ -126,19 +128,20 @@ struct ApplyMemberVisitor {
     typedef typename boost::fusion::extension::struct_member_name <
             typename boost::remove_const<T>::type , N::value> member;
 
-    static void apply (T & cvalue,  Visitor & v, const Name& = noName()) {
+    template <typename ... Name>
+    static void apply (T & cvalue,  Visitor & v, Name&& ...) {
         applyVisitor(boost::fusion::at<N>(cvalue), v, member::call() );
     }
 };
 
 // Deprecated
-inline Name stripMethodName(Name name) {
+inline std::string stripMethodName(std::string name) {
     size_t namespacesEndPos = name.find_last_of(':');
     return (namespacesEndPos == std::string::npos) ? std::move(name) : name.substr(namespacesEndPos + 1);
 }
 
 #define YR_GET_WITH_SPECIFIC_NAME(fun, name)\
-    std::make_pair(Name(name), obj.fun())
+    std::make_pair(name, obj.fun())
 
 // Deprecated
 #define YR_CALL_WITH_SPECIFIC_NAME(fun, name) YR_GET_WITH_SPECIFIC_NAME(fun, name)
@@ -163,7 +166,8 @@ struct ApplyMethodVisitor {
 
     typedef const typename boost::fusion::result_of::value_at <T, N>::type current;
 
-    static void apply (const T & cvalue,  Visitor & v, const Name& = noName()) {
+    template <typename ... Name>
+    static void apply (const T & cvalue,  Visitor & v, Name&& ...) {
         current val = boost::fusion::at<N>(cvalue);
         applyVisitor( val, v );
     }
@@ -177,7 +181,8 @@ struct ApplyMethodVisitor<T, Visitor, N, typename boost::enable_if<
 
     typedef typename boost::fusion::result_of::value_at <T, N>::type current;
 
-    static void apply (T & cvalue, Visitor & v, const Name& = noName()) {
+    template <typename ... Name>
+    static void apply (T & cvalue, Visitor & v, Name&& ...) {
         current buf = boost::fusion::at<N>(cvalue);
         applyVisitor( buf, v );
         boost::fusion::at<N>(cvalue) = std::move(buf);
@@ -197,15 +202,17 @@ struct ApplyStructItemVisitor {
     typedef typename boost::mpl::eval_if< has_type<member>, ApplyMemberVisitor<T,Visitor,N>,
             ApplyMethodVisitor<T,Visitor,N> >::type item;
 
-    static void apply (T& cvalue,  Visitor& v, const Name& name = noName()) {
-        item::apply(cvalue, v, name);
+    template <typename ... Name>
+    static void apply (T& cvalue,  Visitor& v, Name&& ... name) {
+        item::apply(cvalue, v, std::forward<Name>(name)...);
         ApplyStructItemVisitor<T, Visitor, next>::apply(cvalue, v);
     }
 };
 
 template <typename T, typename Visitor>
 struct ApplyStructItemVisitor<T, Visitor, typename boost::fusion::result_of::size<T>::type > {
-    static void apply ( T& , Visitor& , const Name& = noName()) {
+    template <typename ... Name>
+    static void apply ( T& , Visitor& , Name&& ... ) {
     }
 };
 
@@ -216,9 +223,10 @@ template <typename T, typename Visitor>
 struct ApplyStructVisitor {
     typedef ApplyStructVisitor<T, Visitor> type;
 
-    static void apply (T& cvalue, Visitor& v, const Name& name = noName() ) {
-        auto& internalsVisitor = v.onStructStart(name);
-        ApplyStructFirstItemVisitor<T,Visitor>::apply(cvalue, internalsVisitor, name);
+    template <typename ... Name>
+    static void apply (T& cvalue, Visitor& v, Name&& ... name) {
+        auto& internalsVisitor = v.onStructStart(std::forward<Name>(name)...);
+        ApplyStructFirstItemVisitor<T,Visitor>::apply(cvalue, internalsVisitor, std::forward<Name>(name)...);
         v.onStructEnd();
     }
 };
@@ -240,8 +248,9 @@ struct ApplyPairVisitor {
         applyVisitor( pair.second, v, s.str() );
     };
 
-    static void apply (T & pair, Visitor & v, const Name& name) {
-        ApplyStructVisitor<T,Visitor>::apply( pair, v, name );
+    template <typename Name>
+    static void apply (T & pair, Visitor & v, Name&& name) {
+        ApplyStructVisitor<T,Visitor>::apply( pair, v, std::forward<Name>(name) );
     };
 };
 
@@ -254,8 +263,9 @@ struct ApplyArrayVisitor {
 
     static constexpr int size = sizeof(T) / sizeof(TItem);
 
-    static void apply (T& cvalue, Visitor& v, const Name& name = noName()) {
-        v.onSequenceStart(cvalue, name);
+    template <typename ... Name>
+    static void apply (T& cvalue, Visitor& v, Name&& ... name) {
+        v.onSequenceStart(cvalue, std::forward<Name>(name)...);
         for ( int i = 0; i < size; i++) {
             applyVisitor ( cvalue[i], v);
         }
@@ -292,9 +302,10 @@ struct ApplySmartPtrVisitor {
 
     typedef ApplySmartPtrVisitor<T,Visitor> type;
 
-    static void apply (T& ptr, Visitor& v, const Name& name = noName()) {
-        if ( v.onSmartPointer( ptr, name ) ) {
-            applyVisitor(*ptr, v, name);
+    template <typename ... Name>
+    static void apply (T& ptr, Visitor& v, Name&& ... name) {
+        if ( v.onSmartPointer( ptr, std::forward<Name>(name)... ) ) {
+            applyVisitor(*ptr, v, std::forward<Name>(name)...);
         }
     }
 };
@@ -349,36 +360,37 @@ template<typename T>
 class SerializeVisitor {
 public:
     typedef T value_type;
-    template<typename P>
-    void onPodType(const P& , const Name& = noName()) {};
+    template<typename P, typename ... Name>
+    void onPodType(const P& , Name&& ...) {};
 
-    SerializeVisitor& onStructStart(const Name& = noName()) { return *this;};
+    template<typename ... Name>
+    SerializeVisitor& onStructStart(Name&& ...) { return *this;};
     void onStructEnd() {};
 
-    template<typename P>
-    SerializeVisitor& onMapStart(const P& , const Name& = noName()) { return *this;};
+    template<typename P, typename ... Name>
+    SerializeVisitor& onMapStart(const P& , Name&& ...) { return *this;};
     void onMapEnd() {};
 
-    template<typename P>
-    SerializeVisitor& onSequenceStart(const P& , const Name& = noName()) { return *this;};
+    template<typename P, typename ... Name>
+    SerializeVisitor& onSequenceStart(const P& , Name&& ...) { return *this;};
     void onSequenceEnd() {};
 
-    template<typename P>
-    bool onOptional(const P& p, const Name& = noName()) {
+    template<typename P, typename ... Name>
+    bool onOptional(const P& p, Name&& ...) {
         return p.is_initialized();
     }
 
-    template<typename P>
-    bool onSmartPointer(const P & p, const Name& = noName()) {
+    template<typename P, typename ... Name>
+    bool onSmartPointer(const P & p, Name&& ...) {
         return p.get();
     }
 
-    template <typename Ptree>
-    void onPtree(const Ptree&, const Name&) {}
+    template <typename Ptree, typename ... Name>
+    void onPtree(const Ptree&, Name&& ...) {}
 
-    template <typename V>
-    void apply(const T & value, V & v, const Name& name = noName()) {
-        applyVisitor(value, v, name);
+    template <typename V, typename ... Name>
+    void apply(const T & value, V & v, Name&& ... name) {
+        applyVisitor(value, v, std::forward<Name>(name)...);
     }
 };
 
@@ -386,36 +398,37 @@ template<typename T>
 class DeserializeVisitor {
 public:
     typedef T value_type;
-    template<typename P>
-    void onPodType(P& , const Name& = noName()) {};
+    template <typename P, typename ... Name>
+    void onPodType(P& , Name&& ...) {};
 
-    void onStructStart(const Name& = noName()) {};
+    template <typename ... Name>
+    void onStructStart(Name&& ... ) {};
     void onStructEnd() {};
 
-    template<typename P>
-    DeserializeVisitor& onMapStart(P& , const Name& = noName()) { return *this; };
+    template<typename P, typename ... Name>
+    DeserializeVisitor& onMapStart(P& , Name&& ...) { return *this; };
     void onMapEnd() {};
 
-    template<typename P>
-    DeserializeVisitor& onSequenceStart(P& , const Name& = noName()) { return *this; };
+    template<typename P, typename ... Name>
+    DeserializeVisitor& onSequenceStart(P& , Name&& ...) { return *this; };
     void onSequenceEnd() {};
 
-    template<typename P>
-    bool onOptional(P& , const Name& = noName()) {
+    template<typename P, typename ... Name>
+    bool onOptional(P& , Name&& ...) {
         return false;
     }
 
-    template<typename P>
-    bool onSmartPointer(P& , const Name& = noName()) {
+    template<typename P, typename ... Name>
+    bool onSmartPointer(P& , Name&& ...) {
         return false;
     }
 
     template <typename P>
     void onPtree(P&) {}
 
-    template <typename V>
-    void apply(T& value, V& v, const Name& name = noName()) {
-        applyVisitor(value, v, name);
+    template <typename V, typename ... Name>
+    void apply(T& value, V& v, Name&& ... name) {
+        applyVisitor(value, v, std::forward<Name>(name)...);
     }
 };
 
