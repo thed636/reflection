@@ -14,12 +14,12 @@ template<typename T>
 class PtreeWriter : public SerializeVisitor<T> {
 public:
     explicit PtreeWriter ( const T & value) {
-        levels.push(&root);
+        level(root);
         applyVisitor(value, *this);
     }
     explicit PtreeWriter ( const T & value, const std::string& rootName) {
-        levels.push(&root);
-        levels.push ( &(root.add_child(rootName,ptree())));
+        level(root);
+        level(level().add_child(rootName,ptree()));
         applyVisitor(value, *this, rootName);
     }
 
@@ -29,7 +29,7 @@ public:
 
     template<typename P, typename Name>
     void onPodType(const P & p, Name&& name) {
-        levels.top()->add(name, p);
+        level().add(name, p);
     }
 
     template<typename P>
@@ -40,7 +40,7 @@ public:
     template <typename Name>
     PtreeWriter& onStructStart(Name&& name) {
         inRootNode = false;
-        levels.push( &(levels.top()->add_child(name, ptree())));
+        level(level().add_child(name, ptree()));
         return *this;
     }
 
@@ -79,6 +79,8 @@ private:
     std::stack < ptree* > levels;
     ptree root;
     bool inRootNode = true;
+    ptree& level() const { return *levels.top(); }
+    void level(ptree& v) { levels.push(&v); }
 };
 
 }}}

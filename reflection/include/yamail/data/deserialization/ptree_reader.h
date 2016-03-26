@@ -15,8 +15,8 @@ template<typename T>
 class PtreeReader : public DeserializeVisitor<T> {
 public:
     explicit PtreeReader ( ptree& pt ) {
-        levels.push( &pt );
-        iters.push( pt.begin() );
+        level( pt );
+        iter( pt.begin() );
 
         applyVisitor( res, *this );
     }
@@ -41,7 +41,7 @@ public:
         if( notInNode() ) {
             return;
         }
-        p = levels.top()->template get<P>(ptree::path_type(name, '\0') );
+        p = level().template get<P>(ptree::path_type(name, '\0') );
     }
 
     template <typename P>
@@ -50,11 +50,11 @@ public:
             return;
         }
 
-        if( iters.top() == levels.top()->end() ) {
+        if( iter() == level().end() ) {
             throw std::runtime_error("Nameless items iterator out of range in PtreeReader");
         }
-        p = iters.top()->second.template get_value<P>();
-        ++iters.top();
+        p = iter()->second.template get_value<P>();
+        ++iter();
     }
 
     template <typename Name>
@@ -62,8 +62,8 @@ public:
         if( inRootNode ) {
             inRootNode = false;
         } else {
-            levels.push( &(levels.top()->get_child( name, fakeNode ) ) );
-            iters.push( levels.top()->begin() );
+            level( level().get_child(name, fakeNode) );
+            iter( level().begin() );
         }
         return *this;
     }
@@ -72,9 +72,9 @@ public:
         if( inRootNode ) {
             inRootNode = false;
         } else {
-            levels.push( &(iters.top()->second) );
-            ++iters.top();
-            iters.push( levels.top()->begin() );
+            level( iter()->second );
+            ++iter();
+            iter( level().begin() );
         }
         return *this;
     }
@@ -94,7 +94,7 @@ public:
         if( notInNode() ) {
             return *this;
         }
-        for( const auto & i : *levels.top()) {
+        for( const auto & i : level()) {
             p[i.first];
         }
         return *this;
@@ -107,7 +107,7 @@ public:
     template <typename P, typename ... Name>
     PtreeReader& onSequenceStart(P & p, Name&& ... name) {
         onStructStart(std::forward<Name>(name)...);
-        p.resize( levels.top()->size() );
+        p.resize( level().size() );
         return *this;
     }
 
@@ -135,7 +135,7 @@ public:
 
     template<typename P, typename Name>
     bool onSmartPointer(P& p, Name&& name) {
-        const bool fieldFound = ( levels.top()->find( name ) != levels.top()->not_found() ) || inRootNode;
+        const bool fieldFound = ( level().find( name ) != level().not_found() ) || inRootNode;
         if( fieldFound ) {
             p.reset(new typename P::element_type);
         }
@@ -144,7 +144,7 @@ public:
 
     template<typename P>
     bool onSmartPointer(P& p) {
-        const bool fieldFound = !levels.top()->empty() || inRootNode;
+        const bool fieldFound = !level().empty() || inRootNode;
         if( fieldFound ) {
             p.reset(new typename P::element_type);
         }
@@ -154,7 +154,7 @@ public:
     template<typename ... Name>
     void onPtree(ptree& p, Name&& ... name) {
         onStructStart(std::forward<Name>(name)...);
-        p = *levels.top();
+        p = level();
         onStructEnd();
     }
 
@@ -163,17 +163,22 @@ private:
 
     std::string defaultValueName = "value";
     ptree fakeNode;
-    bool notInNode() {
-        return levels.top() == &fakeNode;
-    }
+
+    bool notInNode() { return &level() == &fakeNode; }
+
+    ptree & level() const { return *levels.top(); }
+    void level(ptree &v) { levels.push(&v); }
+    ptree::iterator & iter() { return iters.top(); }
+    void iter(ptree::iterator v) { return iters.push(v); }
+
     std::stack < ptree* > levels;
     std::stack < ptree::iterator > iters;
     bool inRootNode = true;
 
     template <typename P, typename  Name>
     bool onOptionalIntegral(boost::optional<P> & p, Name&& name) {
-        const bool optFieldFound = ( levels.top()->find( name ) != levels.top()->not_found() );
-        const bool hasValue = optFieldFound && !levels.top()->get_child(name).data().empty();
+        const bool optFieldFound = ( level().find( name ) != level().not_found() );
+        const bool hasValue = optFieldFound && !level().get_child(name).data().empty();
         if( hasValue ) {
             p = P();
         }
@@ -182,7 +187,7 @@ private:
 
     template <typename P>
     bool onOptionalIntegral(boost::optional<P> & p) {
-        const bool optFieldFound = !levels.top()->empty();
+        const bool optFieldFound = !level().empty();
         const bool hasValue = optFieldFound;
         if( hasValue ) {
             p = P();
@@ -192,7 +197,7 @@ private:
 
     template <typename P, typename Name>
     bool onOptionalImpl(boost::optional<P> & p, Name&& name) {
-        const bool optFieldFound = (levels.top()->find( name ) != levels.top()->not_found()) || inRootNode;
+        const bool optFieldFound = (level().find( name ) != level().not_found()) || inRootNode;
         if( optFieldFound ) {
             p = P();
         }
@@ -201,7 +206,7 @@ private:
 
     template <typename P>
     bool onOptionalImpl(boost::optional<P> & p) {
-        const bool optFieldFound = !levels.top()->empty() || inRootNode;
+        const bool optFieldFound = !level().empty() || inRootNode;
         if( optFieldFound ) {
             p = P();
         }

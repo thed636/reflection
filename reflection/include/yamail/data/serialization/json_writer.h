@@ -20,7 +20,6 @@ class JsonWriter : public SerializeVisitor<T> {
 
 public:
     explicit JsonWriter (const T& value, const std::string& rootName) :
-        defaultValueName("value"),
         gen(createGenerator())
     {
         checkError ( yajl_gen_map_open(gen.get()) );
@@ -28,10 +27,7 @@ public:
         checkError ( yajl_gen_map_close(gen.get()) );
     }
 
-    explicit JsonWriter(const T & value)
-        : defaultValueName("value")
-        , gen(createGenerator())
-    {
+    explicit JsonWriter(const T & value) : gen(createGenerator()) {
         applyVisitor(value, *this);
     }
 
@@ -192,7 +188,7 @@ private:
                     str.size()) );
     }
 
-    std::string defaultValueName;
+    std::string defaultValueName = "value";
     GeneratorPtr gen;
 };
 
