@@ -34,20 +34,16 @@ public:
 
     template <typename P, typename Name>
     void onPodType(P & p, Name&& name) {
-        if( inNode() ) {
-            p = level().template get<P>(ptree::path_type(name, '\0') );
-        }
+        p = level().template get<P>(ptree::path_type(name, '\0') );
     }
 
     template <typename P>
     void onPodType(P & p) {
-        if( inNode() ) {
-            if( iter() == level().end() ) {
-                throw std::runtime_error("Nameless items iterator out of range in PtreeReader");
-            }
-            p = iter()->second.template get_value<P>();
-            ++iter();
+        if( iter() == level().end() ) {
+            throw std::runtime_error("Nameless items iterator out of range in PtreeReader");
         }
+        p = iter()->second.template get_value<P>();
+        ++iter();
     }
 
     template <typename Name>
@@ -56,7 +52,7 @@ public:
         if( inRootNode ) {
             retval.inRootNode = false;
         } else {
-            retval.level( level().get_child(name, fakeNode) );
+            retval.level( level().get_child(name) );
         }
         return std::move(retval);
     }
@@ -77,10 +73,8 @@ public:
     template <typename P, typename ... Name>
     PtreeReader onMapStart(P & p, Name&& ... name) {
         auto retval = onStructStart(std::forward<Name>(name)...);
-        if( inNode() ) {
-            for( const auto & i : retval.level()) {
-                p[i.first];
-            }
+        for( const auto & i : retval.level()) {
+            p[i.first];
         }
         return std::move(retval);
     }
@@ -147,9 +141,6 @@ private:
     std::shared_ptr<T> res;
 
     std::string defaultValueName = "value";
-    ptree fakeNode;
-
-    bool inNode() { return &level() != &fakeNode; }
 
     ptree & level() const { return *level_; }
     void level(ptree &v) {
