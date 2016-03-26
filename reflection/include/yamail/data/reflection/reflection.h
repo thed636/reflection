@@ -96,7 +96,7 @@ struct ApplySequenceVisitor {
 
     template <typename ... Name>
     static void apply(T & cont, Visitor & v, Name&& ... name) {
-        auto& internalsVisitor = v.onSequenceStart(cont, std::forward<Name>(name)...);
+        auto internalsVisitor = v.onSequenceStart(cont, std::forward<Name>(name)...);
         boost::for_each(cont, makeApplier(internalsVisitor));
         v.onSequenceEnd();
     }
@@ -111,7 +111,7 @@ struct ApplyMapVisitor {
 
     template <typename ... Name>
     static void apply(T & cont, Visitor & v, Name&& ... name) {
-        auto& internalsVisitor = v.onMapStart(cont, std::forward<Name>(name)...);
+        auto internalsVisitor = v.onMapStart(cont, std::forward<Name>(name)...);
         boost::for_each(cont, makeApplier(internalsVisitor));
         v.onMapEnd();
     }
@@ -224,7 +224,7 @@ struct ApplyStructVisitor {
 
     template <typename ... Name>
     static void apply (T& cvalue, Visitor& v, Name&& ... name) {
-        auto& internalsVisitor = v.onStructStart(std::forward<Name>(name)...);
+        auto internalsVisitor = v.onStructStart(std::forward<Name>(name)...);
         ApplyStructFirstItemVisitor<T,Visitor>::apply(cvalue, internalsVisitor, std::forward<Name>(name)...);
         v.onStructEnd();
     }

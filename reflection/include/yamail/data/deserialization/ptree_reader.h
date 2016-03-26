@@ -14,90 +14,75 @@ using boost::property_tree::ptree;
 template<typename T>
 class PtreeReader : public DeserializeVisitor<T> {
 public:
-    explicit PtreeReader ( ptree& pt ) {
+    explicit PtreeReader ( ptree& pt ) : res(std::make_shared<T>()) {
         level( pt );
-        iter( pt.begin() );
 
-        applyVisitor( res, *this );
+        applyVisitor( *res, *this );
     }
 
     T result() const {
-        return res;
+        return *res;
     }
 
     T& resultRef() {
-        return res;
+        return *res;
     }
 
     const T& resultRef() const {
-        return res;
-    }
-
-    virtual ~PtreeReader () {
+        return *res;
     }
 
     template <typename P, typename Name>
     void onPodType(P & p, Name&& name) {
-        if( notInNode() ) {
-            return;
+        if( inNode() ) {
+            p = level().template get<P>(ptree::path_type(name, '\0') );
         }
-        p = level().template get<P>(ptree::path_type(name, '\0') );
     }
 
     template <typename P>
     void onPodType(P & p) {
-        if( notInNode() ) {
-            return;
+        if( inNode() ) {
+            if( iter() == level().end() ) {
+                throw std::runtime_error("Nameless items iterator out of range in PtreeReader");
+            }
+            p = iter()->second.template get_value<P>();
+            ++iter();
         }
-
-        if( iter() == level().end() ) {
-            throw std::runtime_error("Nameless items iterator out of range in PtreeReader");
-        }
-        p = iter()->second.template get_value<P>();
-        ++iter();
     }
 
     template <typename Name>
-    PtreeReader& onStructStart(Name&& name) {
+    PtreeReader onStructStart(Name&& name) {
+        auto retval = *this;
         if( inRootNode ) {
-            inRootNode = false;
+            retval.inRootNode = false;
         } else {
-            level( level().get_child(name, fakeNode) );
-            iter( level().begin() );
+            retval.level( level().get_child(name, fakeNode) );
         }
-        return *this;
+        return std::move(retval);
     }
 
-    PtreeReader& onStructStart() {
+    PtreeReader onStructStart() {
+        auto retval = *this;
         if( inRootNode ) {
-            inRootNode = false;
+            retval.inRootNode = false;
         } else {
-            level( iter()->second );
+            retval.level( iter()->second );
             ++iter();
-            iter( level().begin() );
         }
-        return *this;
+        return std::move(retval);
     }
 
-    void onStructEnd() {
-        if( !levels.empty() ) {
-            levels.pop();
-        }
-        if( !iters.empty() ) {
-            iters.pop();
-        }
-    }
+    void onStructEnd() {}
 
     template <typename P, typename ... Name>
-    PtreeReader& onMapStart(P & p, Name&& ... name) {
-        onStructStart(std::forward<Name>(name)...);
-        if( notInNode() ) {
-            return *this;
+    PtreeReader onMapStart(P & p, Name&& ... name) {
+        auto retval = onStructStart(std::forward<Name>(name)...);
+        if( inNode() ) {
+            for( const auto & i : retval.level()) {
+                p[i.first];
+            }
         }
-        for( const auto & i : level()) {
-            p[i.first];
-        }
-        return *this;
+        return std::move(retval);
     }
 
     void onMapEnd() {
@@ -105,14 +90,14 @@ public:
     }
 
     template <typename P, typename ... Name>
-    PtreeReader& onSequenceStart(P & p, Name&& ... name) {
-        onStructStart(std::forward<Name>(name)...);
-        p.resize( level().size() );
-        return *this;
+    PtreeReader onSequenceStart(P & p, Name&& ... name) {
+        auto retval = onStructStart(std::forward<Name>(name)...);
+        p.resize( retval.level().size() );
+        return std::move(retval);
     }
 
     template <typename P, std::size_t N, typename ... Name>
-    PtreeReader& onSequenceStart(P (& p)[N], Name&& ... name) {
+    PtreeReader onSequenceStart(P (& p)[N], Name&& ... name) {
         (void)p;
         return onStructStart(std::forward<Name>(name)...);
     }
@@ -159,20 +144,22 @@ public:
     }
 
 private:
-    T res;
+    std::shared_ptr<T> res;
 
     std::string defaultValueName = "value";
     ptree fakeNode;
 
-    bool notInNode() { return &level() == &fakeNode; }
+    bool inNode() { return &level() != &fakeNode; }
 
-    ptree & level() const { return *levels.top(); }
-    void level(ptree &v) { levels.push(&v); }
-    ptree::iterator & iter() { return iters.top(); }
-    void iter(ptree::iterator v) { return iters.push(v); }
+    ptree & level() const { return *level_; }
+    void level(ptree &v) {
+        level_ = &v;
+        iter_ = v.begin();
+    }
+    ptree::iterator & iter() { return iter_; }
 
-    std::stack < ptree* > levels;
-    std::stack < ptree::iterator > iters;
+    ptree* level_ = nullptr;
+    ptree::iterator iter_;
     bool inRootNode = true;
 
     template <typename P, typename  Name>

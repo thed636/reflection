@@ -107,12 +107,12 @@ public:
     }
 
     template<typename Name>
-    JsonWriter& onStructStart(Name&& name) {
+    JsonWriter onStructStart(Name&& name) {
         addString( name );
         return onStructStart();
     }
 
-    JsonWriter& onStructStart() {
+    JsonWriter onStructStart() {
         checkError ( yajl_gen_map_open(gen.get()) );
         return *this;
     }
@@ -122,7 +122,7 @@ public:
     }
 
     template<typename Map, typename ... Name>
-	JsonWriter& onMapStart(const Map& , Name&& ... name) {
+	JsonWriter onMapStart(const Map& , Name&& ... name) {
         return onStructStart(std::forward<Name>(name)...);
     }
 
@@ -131,13 +131,13 @@ public:
     }
 
     template<typename Seq, typename Name>
-	JsonWriter& onSequenceStart(const Seq& seq, Name&& name) {
+	JsonWriter onSequenceStart(const Seq& seq, Name&& name) {
         addString( name );
         return onSequenceStart(seq);
     }
 
     template<typename P>
-    JsonWriter& onSequenceStart(const P&) {
+    JsonWriter onSequenceStart(const P&) {
         checkError(yajl_gen_array_open(gen.get()));
         return *this;
     }

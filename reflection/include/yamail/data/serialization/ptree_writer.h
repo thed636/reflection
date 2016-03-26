@@ -13,18 +13,18 @@ using boost::property_tree::ptree;
 template<typename T>
 class PtreeWriter : public SerializeVisitor<T> {
 public:
-    explicit PtreeWriter ( const T & value) {
-        level(root);
+    explicit PtreeWriter ( const T & value)  : root(std::make_shared<ptree>()) {
+        level(*root);
         applyVisitor(value, *this);
     }
-    explicit PtreeWriter ( const T & value, const std::string& rootName) {
-        level(root);
+    explicit PtreeWriter ( const T & value, const std::string& rootName) : root(std::make_shared<ptree>()) {
+        level(*root);
         level(level().add_child(rootName,ptree()));
         applyVisitor(value, *this, rootName);
     }
 
     ptree& result() {
-        return root;
+        return *root;
     }
 
     template<typename P, typename Name>
@@ -38,26 +38,26 @@ public:
     }
 
     template <typename Name>
-    PtreeWriter& onStructStart(Name&& name) {
-        inRootNode = false;
-        level(level().add_child(name, ptree()));
-        return *this;
+    PtreeWriter onStructStart(Name&& name) {
+        auto retval =  *this;
+        retval.level(level().add_child(name, ptree()));
+        retval.inRootNode = false;
+        return std::move(retval);
     }
 
-    PtreeWriter& onStructStart() {
+    PtreeWriter onStructStart() {
         if( inRootNode ) {
-            inRootNode = false;
-            return *this;
+            auto retval = *this;
+            retval.inRootNode = false;
+            return retval;
         }
         return onStructStart(defaultValueName);
     }
 
-    void onStructEnd() {
-        levels.pop();
-    }
+    void onStructEnd() {}
 
     template<typename P, typename ... Name>
-	PtreeWriter& onMapStart(const P& , Name&& ... name) {
+	PtreeWriter onMapStart(const P& , Name&& ... name) {
         return onStructStart(std::forward<Name>(name)...);
     }
 
@@ -66,7 +66,7 @@ public:
     }
 
     template<typename P, typename ... Name>
-	PtreeWriter& onSequenceStart(const P& , Name&& ... name) {
+	PtreeWriter onSequenceStart(const P& , Name&& ... name) {
         return onStructStart(std::forward<Name>(name)...);
     }
 
@@ -76,11 +76,11 @@ public:
 
 private:
     std::string defaultValueName = "value";
-    std::stack < ptree* > levels;
-    ptree root;
+    ptree* level_ = nullptr;
+    std::shared_ptr<ptree> root;
     bool inRootNode = true;
-    ptree& level() const { return *levels.top(); }
-    void level(ptree& v) { levels.push(&v); }
+    ptree& level() const { return *level_; }
+    void level(ptree& v) { level_ = &v; }
 };
 
 }}}
