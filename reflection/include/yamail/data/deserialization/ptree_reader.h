@@ -11,13 +11,15 @@ namespace yamail { namespace data { namespace deserialization {
 using namespace yamail::data::reflection;
 using boost::property_tree::ptree;
 
+struct RootNodeNameTag {};
+
 template<typename T>
 class PtreeReader : public DeserializeVisitor<T> {
 public:
     explicit PtreeReader ( ptree& pt ) : res(std::make_shared<T>()) {
         level( pt );
 
-        applyVisitor( *res, *this );
+        applyVisitor( *res, *this, RootNodeNameTag() );
     }
 
     T result() const {
@@ -49,22 +51,16 @@ public:
     template <typename Name>
     PtreeReader onStructStart(Name&& name) {
         auto retval = *this;
-        if( inRootNode ) {
-            retval.inRootNode = false;
-        } else {
-            retval.level( level().get_child(name) );
-        }
+        retval.level( level().get_child(name) );
         return std::move(retval);
     }
 
+    PtreeReader onStructStart(RootNodeNameTag) { return *this; }
+
     PtreeReader onStructStart() {
         auto retval = *this;
-        if( inRootNode ) {
-            retval.inRootNode = false;
-        } else {
-            retval.level( iter()->second );
-            ++iter();
-        }
+        retval.level( iter()->second );
+        ++iter();
         return std::move(retval);
     }
 
@@ -79,9 +75,7 @@ public:
         return std::move(retval);
     }
 
-    void onMapEnd() {
-        onStructEnd();
-    }
+    void onMapEnd() { onStructEnd(); }
 
     template <typename P, typename ... Name>
     PtreeReader onSequenceStart(P & p, Name&& ... name) {
@@ -96,9 +90,7 @@ public:
         return onStructStart(std::forward<Name>(name)...);
     }
 
-    void onSequenceEnd() {
-        onStructEnd();
-    }
+    void onSequenceEnd() { onStructEnd(); }
 
     template <typename P, typename ... Name>
     typename std::enable_if<!std::is_arithmetic<P>::value, bool>::type
@@ -114,7 +106,7 @@ public:
 
     template<typename P, typename Name>
     bool onSmartPointer(P& p, Name&& name) {
-        const bool fieldFound = ( level().find( name ) != level().not_found() ) || inRootNode;
+        const bool fieldFound = ( level().find( name ) != level().not_found() );
         if( fieldFound ) {
             p.reset(new typename P::element_type);
         }
@@ -122,8 +114,14 @@ public:
     }
 
     template<typename P>
+    bool onSmartPointer(P& p, RootNodeNameTag) {
+        p.reset(new typename P::element_type);
+        return true;
+    }
+
+    template<typename P>
     bool onSmartPointer(P& p) {
-        const bool fieldFound = !level().empty() || inRootNode;
+        const bool fieldFound = !level().empty();
         if( fieldFound ) {
             p.reset(new typename P::element_type);
         }
@@ -151,7 +149,6 @@ private:
 
     ptree* level_ = nullptr;
     ptree::iterator iter_;
-    bool inRootNode = true;
 
     template <typename P, typename  Name>
     bool onOptionalIntegral(boost::optional<P> & p, Name&& name) {
@@ -175,7 +172,7 @@ private:
 
     template <typename P, typename Name>
     bool onOptionalImpl(boost::optional<P> & p, Name&& name) {
-        const bool optFieldFound = (level().find( name ) != level().not_found()) || inRootNode;
+        const bool optFieldFound = (level().find( name ) != level().not_found());
         if( optFieldFound ) {
             p = P();
         }
@@ -183,8 +180,14 @@ private:
     }
 
     template <typename P>
+    bool onOptionalImpl(boost::optional<P> & p, RootNodeNameTag) {
+        p = P();
+        return true;
+    }
+
+    template <typename P>
     bool onOptionalImpl(boost::optional<P> & p) {
-        const bool optFieldFound = !level().empty() || inRootNode;
+        const bool optFieldFound = !level().empty();
         if( optFieldFound ) {
             p = P();
         }

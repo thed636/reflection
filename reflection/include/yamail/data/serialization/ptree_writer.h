@@ -10,16 +10,17 @@ namespace yamail { namespace data { namespace serialization {
 using namespace yamail::data::reflection;
 using boost::property_tree::ptree;
 
+struct RootNodeNameTag {};
+
 template<typename T>
 class PtreeWriter : public SerializeVisitor<T> {
 public:
     explicit PtreeWriter ( const T & value)  : root(std::make_shared<ptree>()) {
         level(*root);
-        applyVisitor(value, *this);
+        applyVisitor(value, *this, RootNodeNameTag());
     }
     explicit PtreeWriter ( const T & value, const std::string& rootName) : root(std::make_shared<ptree>()) {
         level(*root);
-        level(level().add_child(rootName,ptree()));
         applyVisitor(value, *this, rootName);
     }
 
@@ -33,26 +34,18 @@ public:
     }
 
     template<typename P>
-    void onPodType(const P & p) {
-        onPodType(p, defaultValueName);
-    }
+    void onPodType(const P & p) { onPodType(p, defaultValueName); }
 
     template <typename Name>
     PtreeWriter onStructStart(Name&& name) {
         auto retval =  *this;
         retval.level(level().add_child(name, ptree()));
-        retval.inRootNode = false;
         return std::move(retval);
     }
 
-    PtreeWriter onStructStart() {
-        if( inRootNode ) {
-            auto retval = *this;
-            retval.inRootNode = false;
-            return retval;
-        }
-        return onStructStart(defaultValueName);
-    }
+    PtreeWriter onStructStart(RootNodeNameTag) { return *this; }
+
+    PtreeWriter onStructStart() { return onStructStart(defaultValueName); }
 
     void onStructEnd() {}
 
@@ -61,24 +54,20 @@ public:
         return onStructStart(std::forward<Name>(name)...);
     }
 
-    void onMapEnd() {
-        onStructEnd();
-    }
+    void onMapEnd() { onStructEnd(); }
 
     template<typename P, typename ... Name>
 	PtreeWriter onSequenceStart(const P& , Name&& ... name) {
         return onStructStart(std::forward<Name>(name)...);
     }
 
-    void onSequenceEnd() {
-        onStructEnd();
-    }
+    void onSequenceEnd() { onStructEnd(); }
 
 private:
     std::string defaultValueName = "value";
     ptree* level_ = nullptr;
     std::shared_ptr<ptree> root;
-    bool inRootNode = true;
+
     ptree& level() const { return *level_; }
     void level(ptree& v) { level_ = &v; }
 };
