@@ -344,15 +344,15 @@ public:
     void onPodType(const P& , Name&& ...) {};
 
     template<typename ... Name>
-    SerializeVisitor& onStructStart(Name&& ...) { return *this;};
+    SerializeVisitor onStructStart(Name&& ...) { return *this;};
     void onStructEnd() {};
 
     template<typename P, typename ... Name>
-    SerializeVisitor& onMapStart(const P& , Name&& ...) { return *this;};
+    SerializeVisitor onMapStart(const P& , Name&& ...) { return *this;};
     void onMapEnd() {};
 
     template<typename P, typename ... Name>
-    SerializeVisitor& onSequenceStart(const P& , Name&& ...) { return *this;};
+    SerializeVisitor onSequenceStart(const P& , Name&& ...) { return *this;};
     void onSequenceEnd() {};
 
     template<typename P, typename ... Name>
@@ -384,15 +384,15 @@ public:
     void onPodType(P& , Name&& ...) {};
 
     template <typename ... Name>
-    void onStructStart(Name&& ... ) {};
+    DeserializeVisitor onStructStart(Name&& ... ) { return *this; };
     void onStructEnd() {};
 
     template<typename P, typename ... Name>
-    DeserializeVisitor& onMapStart(P& , Name&& ...) { return *this; };
+    DeserializeVisitor onMapStart(P& , Name&& ...) { return *this; };
     void onMapEnd() {};
 
     template<typename P, typename ... Name>
-    DeserializeVisitor& onSequenceStart(P& , Name&& ...) { return *this; };
+    DeserializeVisitor onSequenceStart(P& , Name&& ...) { return *this; };
     void onSequenceEnd() {};
 
     template<typename P, typename ... Name>

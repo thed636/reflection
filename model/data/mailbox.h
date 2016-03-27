@@ -36,7 +36,7 @@ public:
      */
     template <typename Handler>
     void getMessages(Handler h) const {
-        impl.getMessages(OnMessage<Handler>(std::move(h)));
+        impl.getMessages(OnMessage<Handler>{std::move(h)});
     }
 
     /**
@@ -44,7 +44,7 @@ public:
      */
     template <typename Handler>
     void getMessages(const Message::Id& id, Handler h) const {
-        impl.getMessages(id, OnMessage<Handler>(std::move(h)));
+        impl.getMessages(id, OnMessage<Handler>{std::move(h)});
     }
 
     /**
@@ -52,7 +52,7 @@ public:
      */
     template <typename Handler>
     void getMessages(const Recipient& r, Handler h) const {
-        impl.getMessages(r, OnMessage<Handler>(std::move(h)));
+        impl.getMessages(r, OnMessage<Handler>{std::move(h)});
     }
 };
 
