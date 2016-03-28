@@ -138,23 +138,54 @@ inline Name stripMethodName(Name name) {
 }
 
 #define YR_GET_WITH_SPECIFIC_NAME(fun, name)\
-    std::make_pair(Name(name), obj.fun())
+        makeGetInvoker(obj, &std::remove_reference<decltype(obj)>::type::fun, Name(name))
 
 // Deprecated
 #define YR_CALL_WITH_SPECIFIC_NAME(fun, name) YR_GET_WITH_SPECIFIC_NAME(fun, name)
 
 #define YR_GET_WITH_NAME(fun) \
-    YR_CALL_WITH_SPECIFIC_NAME(fun, #fun)
+    YR_GET_WITH_SPECIFIC_NAME(fun, #fun)
 
 // Deprecated
 #define YR_CALL_WITH_NAME(fun) \
     YR_CALL_WITH_SPECIFIC_NAME(fun, stripMethodName(#fun))
 
 #define YR_SET_WITH_NAME(fun) \
-    obj.fun( val.second );
+    obj.fun( val );
 
 // Deprecated
 #define YR_CALL_SET_WITH_NAME(fun) YR_SET_WITH_NAME(fun)
+
+template <typename Obj, typename F>
+struct GetterInvoker {
+    Obj& obj;
+    F f;
+    Name name;
+    struct getter_tag;
+    using arg_type = decltype((obj.*f)());
+    GetterInvoker(Obj& obj, F f, Name name) : obj(obj), f(f), name(name) {}
+    template <typename O>
+    GetterInvoker(GetterInvoker<O,F> other) : obj(other.obj), f(other.f), name(other.name) {}
+    template <typename Visitor>
+    void operator () (Visitor& v) const { applyVisitor((obj.*f)(), v, name); }
+};
+
+BOOST_MPL_HAS_XXX_TRAIT_DEF(getter_tag)
+
+template <typename Obj, typename F>
+GetterInvoker<Obj,F> makeGetInvoker(Obj& obj, F f, Name name) {
+    return GetterInvoker<Obj,F>{obj, std::move(f), std::move(name)};
+}
+
+template <typename T, typename Visitor>
+struct ApplyGetInvokerVisitor {
+
+    typedef ApplyGetInvokerVisitor<T,Visitor> type;
+
+    static void apply (T & invoker,  Visitor & v, const Name& = noName()) {
+        invoker(v);
+    }
+};
 
 template <typename T, typename Visitor, typename N, class Enabled = void>
 struct ApplyMethodVisitor {
@@ -178,7 +209,7 @@ struct ApplyMethodVisitor<T, Visitor, N, typename boost::enable_if<
     typedef typename boost::fusion::result_of::value_at <T, N>::type current;
 
     static void apply (T & cvalue, Visitor & v, const Name& = noName()) {
-        current buf = boost::fusion::at<N>(cvalue);
+        typename current::arg_type buf{};// = boost::fusion::at<N>(cvalue);
         applyVisitor( buf, v );
         boost::fusion::at<N>(cvalue) = std::move(buf);
     }
@@ -330,9 +361,11 @@ struct SelectType {
             ApplySmartPtrVisitor<T, V>,
         Elif< is_optional<Decay<T>>,
             ApplyOptionalVisitor <T, V>,
+        Elif< has_getter_tag<T>,
+            ApplyGetInvokerVisitor <T, V>,
         Else<
             ApplyStructVisitor <T, V>
-        >>>>,
+        >>>>>,
     Elif< boost::is_array<T>,
         ApplyArrayVisitor <T, V>,
     Else<

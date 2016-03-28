@@ -144,8 +144,8 @@ typedef std::pair<std::string, std::string> StringPair;
 typedef std::pair<std::string, StringMap> StringMapPair;
 
 BOOST_FUSION_ADAPT_ADT(DStruct,
-    (IntPair, IntPair, YR_GET_WITH_NAME(getNum), YR_CALL_SET_WITH_NAME(setNum) )
-    (StringPair, StringPair, YR_GET_WITH_NAME(getStr), YR_CALL_SET_WITH_NAME(setStr) ) )
+    (BOOST_FUSION_ADAPT_AUTO, BOOST_FUSION_ADAPT_AUTO, YR_GET_WITH_NAME(getNum), YR_CALL_SET_WITH_NAME(setNum) )
+    (BOOST_FUSION_ADAPT_AUTO, BOOST_FUSION_ADAPT_AUTO, YR_GET_WITH_NAME(getStr), YR_CALL_SET_WITH_NAME(setStr) ) )
 
 using namespace testing;
 

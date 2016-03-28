@@ -40,8 +40,8 @@ private:
 };
 
 BOOST_FUSION_ADAPT_ADT(ClassWithMap,
-    (StringPair, StringPair, YR_CALL_WITH_NAME(ClassWithMap::getTitle), YR_CALL_SET_WITH_NAME(ClassWithMap::setTitle) )
-    (StringMapPair, StringMapPair, YR_CALL_WITH_NAME(ClassWithMap::getDict), YR_CALL_SET_WITH_NAME(ClassWithMap::setDict) )
+    (BOOST_FUSION_ADAPT_AUTO, BOOST_FUSION_ADAPT_AUTO, YR_GET_WITH_NAME(getTitle), YR_SET_WITH_NAME(setTitle) )
+    (BOOST_FUSION_ADAPT_AUTO, BOOST_FUSION_ADAPT_AUTO, YR_GET_WITH_NAME(getDict), YR_SET_WITH_NAME(setDict) )
 )
 
 TEST(GetterSetterTest, deserializeStructWithMapFromJson_sameObject) {
