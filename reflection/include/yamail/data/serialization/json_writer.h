@@ -42,68 +42,68 @@ public:
     }
 
     template <typename ... Name>
-    void onPodType(float f, Name&& ... name) {
-        onPodType(static_cast<const double>(f), std::forward<Name>(name)...);
+    void onValue(float f, Name&& ... name) {
+        onValue(static_cast<const double>(f), std::forward<Name>(name)...);
     }
 
     template<typename Name>
-    void onPodType(double d, Name&& name) {
+    void onValue(double d, Name&& name) {
         addString(name);
-        onPodType(d);
+        onValue(d);
     }
 
-    void onPodType(double d) {
+    void onValue(double d) {
         checkError(yajl_gen_double(gen.get(), d));
     }
 
     template <typename ... Name>
-    void onPodType(int i, Name&& ... name) {
-        onPodType(static_cast<const long>(i), std::forward<Name>(name)...);
+    void onValue(int i, Name&& ... name) {
+        onValue(static_cast<const long>(i), std::forward<Name>(name)...);
     }
 
     template<typename Name>
-    void onPodType(long l, Name&& name) {
+    void onValue(long l, Name&& name) {
         addString(name);
-        onPodType(l);
+        onValue(l);
     }
 
-    void onPodType(long l) {
+    void onValue(long l) {
         checkError( yajl_gen_integer(gen.get(), l) );
     }
 
     template<typename Name>
-    void onPodType(std::size_t s, Name&& name) {
+    void onValue(std::size_t s, Name&& name) {
         addString(name);
-        onPodType(s);
+        onValue(s);
     }
 
-    void onPodType(std::size_t s) {
+    void onValue(std::size_t s) {
         checkError( yajl_gen_integer(gen.get(), s) );
     }
 
     template<typename Name>
-    void onPodType(bool b, Name&& name) {
+    void onValue(bool b, Name&& name) {
         addString(name);
-        onPodType(b);
+        onValue(b);
     }
 
-    void onPodType(bool b) {
+    void onValue(bool b) {
         checkError( yajl_gen_bool(gen.get(), b) );
     }
 
     template<typename Name>
-    void onPodType(const std::string & s, Name&& name) {
+    void onValue(const std::string & s, Name&& name) {
         addString(name);
-        onPodType(s);
+        onValue(s);
     }
 
-    void onPodType(const std::string & s) {
+    void onValue(const std::string & s) {
         addString(s);
     }
 
     template<typename P, typename ... Name>
-    void onPodType(const P& p, Name&& ... name) {
-        onPodType ( boost::lexical_cast<std::string>(p), std::forward<Name>(name)...);
+    void onValue(const P& p, Name&& ... name) {
+        onValue ( boost::lexical_cast<std::string>(p), std::forward<Name>(name)...);
     }
 
     template<typename Name>
@@ -149,7 +149,7 @@ public:
     template <typename Ptree, typename ... Name >
     void onPtree(const Ptree& tree, Name&& ... name) {
         if (tree.size() == 0) {
-            onPodType(tree.data(), std::forward<Name>(name)...);
+            onValue(tree.data(), std::forward<Name>(name)...);
         } else if (tree.front().first.empty()) {
             onSequenceStart(tree, std::forward<Name>(name)...);
             for (const auto& i : tree) {

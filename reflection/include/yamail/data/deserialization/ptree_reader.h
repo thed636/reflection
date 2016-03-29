@@ -35,12 +35,12 @@ public:
     }
 
     template <typename P, typename Name>
-    void onPodType(P & p, Name&& name) {
+    void onValue(P & p, Name&& name) {
         p = level().template get<P>(ptree::path_type(name, '\0') );
     }
 
     template <typename P>
-    void onPodType(P & p) {
+    void onValue(P & p) {
         if( iter() == level().end() ) {
             throw std::runtime_error("Nameless items iterator out of range in PtreeReader");
         }

@@ -29,12 +29,12 @@ public:
     }
 
     template<typename P, typename Name>
-    void onPodType(const P & p, Name&& name) {
+    void onValue(const P & p, Name&& name) {
         level().add(name, p);
     }
 
     template<typename P>
-    void onPodType(const P & p) { onPodType(p, defaultValueName); }
+    void onValue(const P & p) { onValue(p, defaultValueName); }
 
     template <typename Name>
     PtreeWriter onStructStart(Name&& name) {

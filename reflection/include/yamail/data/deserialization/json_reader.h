@@ -29,7 +29,7 @@ public:
     }
 
     template <typename P, typename ... Name>
-    void onPodType(P& , Name&& ... ) {
+    void onValue(P& , Name&& ... ) {
         throw std::logic_error( "NYI" );
     }
 

@@ -66,7 +66,7 @@ struct ApplyPodVisitor {
 
     template <typename ... Name>
     static void apply (T & value, Visitor & v, Name&& ... name) {
-        v.onPodType(value, std::forward<Name>(name)...);
+        v.onValue(value, std::forward<Name>(name)...);
     };
 };
 
@@ -343,7 +343,7 @@ public:
     typedef SerializeVisitorTag tag;
 
     template<typename P, typename ... Name>
-    void onPodType(const P& , Name&& ...) {};
+    void onValue(const P& , Name&& ...) {};
 
     template<typename ... Name>
     SerializeVisitor onStructStart(Name&& ...) { return *this;};
@@ -378,7 +378,7 @@ public:
     typedef DeserializeVisitorTag tag;
 
     template <typename P, typename ... Name>
-    void onPodType(P& , Name&& ...) {};
+    void onValue(P& , Name&& ...) {};
 
     template <typename ... Name>
     DeserializeVisitor onStructStart(Name&& ... ) { return *this; };
