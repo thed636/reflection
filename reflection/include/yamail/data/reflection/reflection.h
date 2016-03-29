@@ -367,11 +367,6 @@ public:
 
     template <typename Ptree, typename ... Name>
     void onPtree(const Ptree&, Name&& ...) {}
-
-    template <typename V, typename ... Name>
-    void apply(const T & value, V & v, Name&& ... name) {
-        applyVisitor(value, v, std::forward<Name>(name)...);
-    }
 };
 
 template<typename T>
@@ -407,11 +402,6 @@ public:
 
     template <typename P>
     void onPtree(P&) {}
-
-    template <typename V, typename ... Name>
-    void apply(T& value, V& v, Name&& ... name) {
-        applyVisitor(value, v, std::forward<Name>(name)...);
-    }
 };
 
 }}}
