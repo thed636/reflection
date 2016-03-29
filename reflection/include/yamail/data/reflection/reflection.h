@@ -36,16 +36,18 @@ namespace yamail { namespace data { namespace reflection {
 template <typename T, typename Visitor>
 struct ApplyVisitor;
 
-template <typename T, typename Visitor, typename ... Args>
-void applyVisitor(T& t, Visitor& v, Args && ... args ) {
-    ApplyVisitor<T,Visitor>::apply(t, v, std::forward<Args>(args)...);
+template <typename T, typename Visitor, typename ... Name>
+inline void applyVisitor(T& t, Visitor& v, Name && ... args ) {
+    ApplyVisitor<T,Visitor>::apply(t, v, std::forward<Name>(args)...);
 }
 
 template <typename V>
 struct VisitorApplier {
     V& v;
-    template <typename T>
-    void operator()(T& t) const { applyVisitor(t, v); }
+    template <typename T, typename ... Name>
+    void operator()(T& t, Name&& ... name) const {
+        applyVisitor(t, v, std::forward<Name>(name)...);
+    }
 };
 
 template <typename Visitor>
