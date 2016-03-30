@@ -31,6 +31,11 @@ find_package(Boost REQUIRED COMPONENTS
 find_library(yajl_LIBRARIES yajl)
 message(STATUS "yajl:" ${yajl_LIBRARIES})
 
+find_path(yajl_INCLUDE_DIR
+  NAMES yajl/yajl_common.h
+)
+message(STATUS "yajl include dir:" ${yajl_INCLUDE_DIR})
+
 subdirs(googletest)
 
 set(reflection_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/reflection/include)
@@ -41,6 +46,7 @@ include_directories(${reflection_INCLUDE_DIR})
 include_directories(${gtest_INCLUDE_DIR})
 include_directories(${gmock_INCLUDE_DIR})
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+include_directories(${yajl_INCLUDE_DIR})
 
 set(ext_CMAKE_ARGS
   -DCMAKE_USER_MAKE_RULES_OVERRIDE=${CMAKE_USER_MAKE_RULES_OVERRIDE}
