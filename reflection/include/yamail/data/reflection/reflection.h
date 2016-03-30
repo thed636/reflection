@@ -44,10 +44,16 @@ inline void applyVisitor(T& t, Visitor& v, Name && ... args ) {
 template <typename V>
 struct VisitorApplier {
     V& v;
-    template <typename T, typename ... Name>
-    void operator()(T& t, Name&& ... name) const {
-        applyVisitor(t, v, std::forward<Name>(name)...);
-    }
+    template <typename T>
+    void operator()(T& t) const { applyVisitor(t, v); }
+};
+
+template <typename V, typename Name>
+struct VisitorApplierWithName {
+    V& v;
+    Name& name;
+    template <typename T>
+    void operator()(T& t) const { applyVisitor(t, v, name); }
 };
 
 template <typename Visitor>
@@ -55,9 +61,16 @@ inline VisitorApplier<Visitor> makeApplier(Visitor& v) {
     return VisitorApplier<Visitor>{v};
 }
 
+template <typename Visitor, typename Name>
+inline VisitorApplierWithName<Visitor, Name> makeApplier(Visitor& v, Name& name) {
+    return VisitorApplierWithName<Visitor, Name>{v, name};
+}
+
 struct SerializeVisitorTag;
 
 struct DeserializeVisitorTag;
+
+struct MapItemNameTag {};
 
 template <typename T, typename Visitor>
 struct ApplyPodVisitor {
@@ -114,7 +127,8 @@ struct ApplyMapVisitor {
     template <typename ... Name>
     static void apply(T & cont, Visitor & v, Name&& ... name) {
         auto internalsVisitor = v.onMapStart(cont, std::forward<Name>(name)...);
-        boost::for_each(cont, makeApplier(internalsVisitor));
+        const MapItemNameTag tag{};
+        boost::for_each(cont, makeApplier(internalsVisitor, tag));
         v.onMapEnd();
     }
 };
@@ -239,13 +253,13 @@ struct ApplyPairVisitor {
 
     typedef ApplyPairVisitor<T,Visitor> type;
 
-    static void apply (T & pair, Visitor & v) {
+    static void apply (T & pair, Visitor & v, MapItemNameTag) {
         applyVisitor( pair.second, v, pair.first );
     };
 
-    template <typename Name>
-    static void apply (T & pair, Visitor & v, Name&& name) {
-        ApplyStructVisitor<T,Visitor>::apply( pair, v, std::forward<Name>(name) );
+    template <typename ... Name>
+    static void apply (T & pair, Visitor & v, Name&& ... name) {
+        ApplyStructVisitor<T,Visitor>::apply( pair, v, std::forward<Name>(name)... );
     };
 };
 
