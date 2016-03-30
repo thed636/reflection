@@ -336,75 +336,46 @@ struct SelectType {
 template <typename T, typename Visitor>
 struct ApplyVisitor : SelectType < T, Visitor >::type {};
 
-template<typename T>
-class SerializeVisitor {
+template<typename T, typename Tag>
+class Visitor {
 public:
-    typedef T value_type;
-    typedef SerializeVisitorTag tag;
+    using value_type = T;
+    using tag = Tag;
 
     template<typename P, typename ... Name>
-    void onValue(const P& , Name&& ...) {};
+    void onValue(P&& , Name&& ...) {};
 
     template<typename ... Name>
-    SerializeVisitor onStructStart(Name&& ...) { return *this;};
+    Visitor onStructStart(Name&& ...) { return *this;};
     void onStructEnd() {};
 
     template<typename P, typename ... Name>
-    SerializeVisitor onMapStart(const P& , Name&& ...) { return *this;};
+    Visitor onMapStart(P&& , Name&& ...) { return *this;};
     void onMapEnd() {};
 
     template<typename P, typename ... Name>
-    SerializeVisitor onSequenceStart(const P& , Name&& ...) { return *this;};
+    Visitor onSequenceStart(P&& , Name&& ...) { return *this;};
     void onSequenceEnd() {};
 
     template<typename P, typename ... Name>
-    bool onOptional(const P& p, Name&& ...) {
+    bool onOptional(P&& p, Name&& ...) {
         return p.is_initialized();
     }
 
     template<typename P, typename ... Name>
-    bool onSmartPointer(const P & p, Name&& ...) {
+    bool onSmartPointer(P&& p, Name&& ...) {
         return p.get();
     }
 
-    template <typename Ptree, typename ... Name>
-    void onPtree(const Ptree&, Name&& ...) {}
+    template <typename P, typename ... Name>
+    void onPtree(P&&, Name&& ...) {}
 };
 
 template<typename T>
-class DeserializeVisitor {
-public:
-    typedef T value_type;
-    typedef DeserializeVisitorTag tag;
+using SerializeVisitor = Visitor<const T, SerializeVisitorTag>;
 
-    template <typename P, typename ... Name>
-    void onValue(P& , Name&& ...) {};
-
-    template <typename ... Name>
-    DeserializeVisitor onStructStart(Name&& ... ) { return *this; };
-    void onStructEnd() {};
-
-    template<typename P, typename ... Name>
-    DeserializeVisitor onMapStart(P& , Name&& ...) { return *this; };
-    void onMapEnd() {};
-
-    template<typename P, typename ... Name>
-    DeserializeVisitor onSequenceStart(P& , Name&& ...) { return *this; };
-    void onSequenceEnd() {};
-
-    template<typename P, typename ... Name>
-    bool onOptional(P& , Name&& ...) {
-        return false;
-    }
-
-    template<typename P, typename ... Name>
-    bool onSmartPointer(P& , Name&& ...) {
-        return false;
-    }
-
-    template <typename P>
-    void onPtree(P&) {}
-};
+template<typename T>
+using DeserializeVisitor = Visitor<T, DeserializeVisitorTag>;
 
 }}}
 
