@@ -125,11 +125,11 @@ struct ApplyMemberVisitor {
     typedef ApplyMemberVisitor<T,Visitor,N> type;
 
     typedef typename boost::fusion::extension::struct_member_name <
-            typename boost::remove_const<T>::type , N::value> member;
+            typename boost::remove_const<T>::type , N::value> member_name;
 
     template <typename ... Name>
-    static void apply (T & cvalue,  Visitor & v, Name&& ...) {
-        applyVisitor(boost::fusion::at<N>(cvalue), v, member::call() );
+    static void apply (T & cvalue, Visitor & v) {
+        applyVisitor(boost::fusion::at<N>(cvalue), v, member_name::call() );
     }
 };
 
@@ -168,10 +168,9 @@ struct ApplyMethodVisitor<T, Visitor, N, SerializeVisitorTag> {
 
     typedef const typename boost::fusion::result_of::value_at <T, N>::type current;
 
-    template <typename ... Name>
-    static void apply (const T & cvalue,  Visitor & v, Name&& ...) {
+    static void apply (const T & cvalue,  Visitor & v) {
         current val = boost::fusion::at<N>(cvalue);
-        applyVisitor( val, v );
+        applyVisitor( val.second, v, val.first );
     }
 };
 
@@ -182,10 +181,9 @@ struct ApplyMethodVisitor<T, Visitor, N, DeserializeVisitorTag> {
 
     typedef typename boost::fusion::result_of::value_at <T, N>::type current;
 
-    template <typename ... Name>
-    static void apply (T & cvalue, Visitor & v, Name&& ...) {
+    static void apply (T & cvalue, Visitor & v) {
         current buf = boost::fusion::at<N>(cvalue);
-        applyVisitor( buf, v );
+        applyVisitor( buf.second, v, buf.first );
         boost::fusion::at<N>(cvalue) = std::move(buf);
     }
 };
@@ -203,17 +201,15 @@ struct ApplyStructItemVisitor {
     typedef typename boost::mpl::eval_if< has_type<member>, ApplyMemberVisitor<T,Visitor,N>,
             ApplyMethodVisitor<T,Visitor,N> >::type item;
 
-    template <typename ... Name>
-    static void apply (T& cvalue,  Visitor& v, Name&& ... name) {
-        item::apply(cvalue, v, std::forward<Name>(name)...);
+    static void apply (T& cvalue,  Visitor& v) {
+        item::apply(cvalue, v);
         ApplyStructItemVisitor<T, Visitor, next>::apply(cvalue, v);
     }
 };
 
 template <typename T, typename Visitor>
 struct ApplyStructItemVisitor<T, Visitor, typename boost::fusion::result_of::size<T>::type > {
-    template <typename ... Name>
-    static void apply ( T& , Visitor& , Name&& ... ) {
+    static void apply ( T& , Visitor&) {
     }
 };
 
@@ -227,7 +223,7 @@ struct ApplyStructVisitor {
     template <typename ... Name>
     static void apply (T& cvalue, Visitor& v, Name&& ... name) {
         auto internalsVisitor = v.onStructStart(std::forward<Name>(name)...);
-        ApplyStructFirstItemVisitor<T,Visitor>::apply(cvalue, internalsVisitor, std::forward<Name>(name)...);
+        ApplyStructFirstItemVisitor<T,Visitor>::apply(cvalue, internalsVisitor);
         v.onStructEnd();
     }
 };
