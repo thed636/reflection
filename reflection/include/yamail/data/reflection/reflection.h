@@ -64,11 +64,11 @@ struct SequenceItemTag {};
 
 template <typename Name>
 struct NamedItemTag {
-    Name & name;
+    const Name & name;
 };
 
 template <typename Name>
-inline NamedItemTag<Name> namedItemTag(Name& name) {
+inline NamedItemTag<Name> namedItemTag(const Name& name) {
     return NamedItemTag<Name>{name};
 }
 
