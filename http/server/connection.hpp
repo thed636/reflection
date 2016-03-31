@@ -16,7 +16,6 @@
 #include <boost/asio.hpp>
 #include "reply.hpp"
 #include "request.hpp"
-#include "request_handler.hpp"
 #include "request_parser.hpp"
 #include "connection_manager.hpp"
 
@@ -37,7 +36,7 @@ public:
     explicit connection(
             boost::asio::ip::tcp::socket socket,
             conn_manager& manager,
-            request_handler& handler);
+            RequestHandler& handler);
 
     /// Start the first asynchronous operation for the connection.
     void start();

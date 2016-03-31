@@ -8,17 +8,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <utility>
-#include <vector>
-#include "connection_manager.hpp"
-#include "request_handler.hpp"
-
 namespace http {
 namespace server {
 
 template<typename RH>
 connection<RH>::connection(boost::asio::ip::tcp::socket socket,
-        conn_manager& manager, request_handler& handler)
+        conn_manager& manager, RH& handler)
         : socket_(std::move(socket)),
           connection_manager_(manager),
           request_handler_(handler) {
