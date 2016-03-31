@@ -11,26 +11,29 @@
 #include <iostream>
 #include <string>
 #include <boost/asio.hpp>
+#include "request_handler.hpp"
 #include "server.hpp"
+
+using namespace http::server;
 
 int main(int argc, char* argv[]) {
     try {
         // Check command line arguments.
-        if (argc != 4) {
-            std::cerr << "Usage: http_server <address> <port> <doc_root>\n";
+        if (argc != 3) {
+            std::cerr << "Usage: http_server <address> <port>\n";
             std::cerr << "  For IPv4, try:\n";
-            std::cerr << "    server 0.0.0.0 80 .\n";
+            std::cerr << "    server 0.0.0.0 80\n";
             std::cerr << "  For IPv6, try:\n";
-            std::cerr << "    server 0::0 80 .\n";
+            std::cerr << "    server 0::0 80\n";
             return 1;
         }
 
-        // Initialise the server.
-        http::server::server s(argv[1], argv[2], argv[3]);
+        // Initialize the server.
+        server<request_handler> s(argv[1], argv[2], request_handler());
 
         // Run the server until stopped.
         s.run();
-    } catch (std::exception& e) {
+    } catch (const std::exception& e) {
         std::cerr << "exception: " << e.what() << "\n";
     }
 

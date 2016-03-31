@@ -8,7 +8,6 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "connection.hpp"
 #include <utility>
 #include <vector>
 #include "connection_manager.hpp"
@@ -17,22 +16,25 @@
 namespace http {
 namespace server {
 
-connection::connection(boost::asio::ip::tcp::socket socket,
-        connection_manager& manager, request_handler& handler) :
+template<typename RH>
+connection<RH>::connection(boost::asio::ip::tcp::socket socket,
+        conn_manager& manager, request_handler& handler) :
         socket_(std::move(socket)), connection_manager_(manager), request_handler_(
                 handler) {
 }
-
-void connection::start() {
+template<typename RH>
+void connection<RH>::start() {
     do_read();
 }
 
-void connection::stop() {
+template<typename RH>
+void connection<RH>::stop() {
     socket_.close();
 }
 
-void connection::do_read() {
-    auto self(shared_from_this());
+template<typename RH>
+void connection<RH>::do_read() {
+    auto self(this->shared_from_this());
     socket_.async_read_some(boost::asio::buffer(buffer_),
             [this, self](boost::system::error_code ec, std::size_t bytes_transferred) {
                 if (!ec) {
@@ -50,13 +52,14 @@ void connection::do_read() {
                         do_read();
                     }
                 } else if (ec != boost::asio::error::operation_aborted) {
-                    connection_manager_.stop(shared_from_this());
+                    connection_manager_.stop(self);
                 }
             });
 }
 
-void connection::do_write() {
-    auto self(shared_from_this());
+template<typename RH>
+void connection<RH>::do_write() {
+    auto self(this->shared_from_this());
     boost::asio::async_write(socket_, reply_.to_buffers(),
             [this, self](boost::system::error_code ec, std::size_t) {
                 if (!ec) {
@@ -67,7 +70,7 @@ void connection::do_write() {
                 }
 
                 if (ec != boost::asio::error::operation_aborted) {
-                    connection_manager_.stop(shared_from_this());
+                    connection_manager_.stop(self);
                 }
             });
 }

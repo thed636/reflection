@@ -1,32 +1,34 @@
 #ifndef MODEL_DATA_MESSAGE_H_
 #define MODEL_DATA_MESSAGE_H_
 
-#include "email.h"
 #include <vector>
+
+#include "email.h"
+#include "recipient.h"
 
 namespace model {
 
-class Message {
-public:
+struct Message {
     using Recipients = std::vector<Recipient>;
     using Body = std::string;
     using Id = std::string;
     using Subject = std::string;
 
     // The message unique id
-    const Id& id() const;
+    Id id;
     // The message subject
-    const Subject& subject() const;
+    Subject subject;
     // Here we have some structured data
-    const Recipients& recipients() const;
+    Recipients recipients;
     // Here we have huge plain text data
-    const Body& body() const;
+    Body body;
 };
+
 
 /**
  * To get message abstract - to do not get a full message text
  */
-std::string abstract(const Message& );
+std::string abstract(const Message&);
 
 }
 

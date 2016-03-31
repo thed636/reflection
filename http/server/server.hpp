@@ -13,23 +13,26 @@
 
 #include <boost/asio.hpp>
 #include <string>
-#include "connection.hpp"
 #include "connection_manager.hpp"
-#include "request_handler.hpp"
+#include "connection.hpp"
 
 namespace http {
 namespace server {
 
 /// The top-level class of the HTTP server.
+template<typename RequestHandler>
 class server {
 public:
+    using conn = connection<RequestHandler>;
+    using conn_manager = connection_manager<conn>;
+
     server(const server&) = delete;
     server& operator=(const server&) = delete;
 
     /// Construct the server to listen on the specified TCP address and port, and
     /// serve up files from the given directory.
     explicit server(const std::string& address, const std::string& port,
-            const std::string& doc_root);
+            RequestHandler request_handler);
 
     /// Run the server's io_service loop.
     void run();
@@ -51,16 +54,18 @@ private:
     boost::asio::ip::tcp::acceptor acceptor_;
 
     /// The connection manager which owns all live connections.
-    connection_manager connection_manager_;
+    conn_manager connection_manager_;
 
     /// The next socket to be accepted.
     boost::asio::ip::tcp::socket socket_;
 
     /// The handler for all incoming requests.
-    request_handler request_handler_;
+    RequestHandler request_handler_;
 };
 
 } // namespace server
 } // namespace http
+
+#include "server.ipp"
 
 #endif // HTTP_SERVER_HPP

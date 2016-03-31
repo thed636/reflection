@@ -3,6 +3,8 @@
 
 #include "email.h"
 
+#include <map>
+
 namespace model {
 
 struct Recipient {
@@ -12,35 +14,47 @@ struct Recipient {
         to,
         cc,
         bcc
-    } type;
-    Email email;
+    } type_;
+    Email email_;
+
+    std::string type() const {
+        using RT = Recipient::Type;
+        switch (type_) {
+            case RT::from : return "from";
+            case RT::to : return "to";
+            case RT::cc : return "cc";
+            case RT::bcc : return "bcc";
+            case RT::unknown: break;
+        }
+        return "unknown";
+    }
+
+    void setType(const std::string& s) {
+        using RT = Recipient::Type;
+        std::map<std::string, Recipient::Type> str2type = {
+            {"from", RT::from},
+            {"to", RT::to},
+            {"cc", RT::cc},
+            {"bcc", RT::bcc}
+        };
+        if( str2type.count(s) ) {
+            type_ = str2type.at(s);
+        }
+        type_ = RT::unknown;
+    }
+
+    const Email& email() const {
+        return email_;
+    }
+    void setEmail(Email email) {
+        email_ = std::move(email);
+    }
 };
 
 inline bool operator < (const Recipient& l, const Recipient& r) {
-    return l.type != r.type ? l.type < r.type : l.email.address < r.email.address;
+    return l.type_ != r.type_ ? l.type_ < r.type_ : l.email_.address < r.email_.address;
 }
 
-// These two functions are really pain - it would be nice to have a mechanism
-// to do not write such functions
-inline std::string toString(Recipient::Type t) {
-    using RT = Recipient::Type;
-    switch (t) {
-        case RT::from : return "from";
-        case RT::to : return "to";
-        case RT::cc : return "cc";
-        case RT::bcc : return "bcc";
-        case RT::unknown: break;
-    }
-    return "unknown";
-}
-
-inline Recipient::Type fromString(const std::string& s) {
-    using RT = Recipient::Type;
-    if(s == "from") return RT::from;
-    if(s == "to") return RT::to;
-    if(s == "cc") return RT::cc;
-    if(s == "bcc") return RT::bcc;
-    return RT::unknown;
 }
 
 #endif /* MODEL_DATA_RECIPIENT_H_ */

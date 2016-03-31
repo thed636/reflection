@@ -56,8 +56,40 @@ public:
     }
 };
 
-template <typename Impl>
-Mailbox<Impl> mailbox(Impl impl) { return Mailbox<Impl>(std::move(impl));}
+/**
+ * Returns one default message on any request
+ */
+class DummyImpl {
+public:
+	template <typename OnMessage>
+	void getMessages(OnMessage h) const {
+		static optional<Message> m = Message{
+			Message::Id{"42-100500"},
+			Message::Subject{"I love you Ozzy!"},
+			Message::Recipients{
+				Recipient{Recipient::Type::from, Email{"Vasya Pupkin", "vasya@yandex.ru"}},
+				Recipient{Recipient::Type::to, Email{"Ozzy Osbourne", "ozzy@gmail.com"}},
+			},
+			Message::Body{"You are the best, and the Black Sabbath is the best Sabbath in the world!"}
+		};
+		h(error_code(), m);
+	}
+
+	template <typename OnMessage>
+	void getMessages(const Message::Id& /*id*/, OnMessage h) const {
+		getMessages(std::move(h));
+	}
+
+	template <typename OnMessage>
+	void getMessages(const Recipient& /*r*/, OnMessage h) const {
+		getMessages(std::move(h));
+	}
+};
+
+
+inline Mailbox<DummyImpl> dummyMailbox() {
+	return Mailbox<DummyImpl>(DummyImpl());
+}
 
 }
 
