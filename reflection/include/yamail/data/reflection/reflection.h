@@ -122,6 +122,28 @@ struct ApplySequenceVisitor {
     }
 };
 
+template <class T>
+struct is_tuple : public boost::mpl::false_ { };
+
+template <class ... T>
+struct is_tuple<std::tuple<T...> > : public boost::mpl::true_ { };
+
+template <class ... T>
+struct is_tuple<boost::tuple<T...> > : public boost::mpl::true_ { };
+
+template <typename T, typename Visitor>
+struct ApplyTupleVisitor {
+
+    typedef ApplyTupleVisitor<T,Visitor> type;
+
+    template <typename Tag>
+    static void apply(T & cont, Visitor & v, Tag tag) {
+        auto itemVisitor = v.onSequenceStart(cont, tag);
+        boost::fusion::for_each(cont, makeApplier(itemVisitor, SequenceItemTag{}));
+        v.onSequenceEnd();
+    }
+};
+
 BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type)
 
 template <typename T, typename Visitor>
@@ -330,13 +352,15 @@ struct SelectType {
     Elif< boost::is_class<T>,
         If< is_pair<Decay<T>>,
             ApplyPairVisitor<T, V>,
+        Elif< is_tuple<Decay<T>>,
+            ApplyTupleVisitor<T, V>,
         Elif< is_smart_ptr<Decay<T>>,
             ApplySmartPtrVisitor<T, V>,
         Elif< is_optional<Decay<T>>,
             ApplyOptionalVisitor <T, V>,
         Else<
             ApplyStructVisitor <T, V>
-        >>>>,
+        >>>>>,
     Elif< boost::is_array<T>,
         ApplySequenceVisitor <T, V>,
     Else<

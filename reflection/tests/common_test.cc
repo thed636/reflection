@@ -331,6 +331,14 @@ TEST(ReflectionTest, serializeDStructJson) {
     ASSERT_EQ(expectedJson, jsonWriter.result());
 }
 
+
+TEST(ReflectionTest, serializeTuple) {
+    auto tuple = std::make_tuple(1, 2, "ZZZ");
+    yamail::data::serialization::JsonWriter<decltype(tuple)> jsonWriter(tuple);
+    const std::string expectedJson = "[1,2,\"ZZZ\"]";
+    ASSERT_EQ(expectedJson, jsonWriter.result());
+}
+
 TEST(ReflectionTest, deserializeDStructJson) {
     DStruct dObj;
     dObj.setStr("qwe");
