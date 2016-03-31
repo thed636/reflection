@@ -11,8 +11,10 @@
 #include <iostream>
 #include <string>
 #include <boost/asio.hpp>
-#include "request_handler.hpp"
-#include "server.hpp"
+
+#include <app/request_handlers/yreflection_single_reply.hpp>
+
+#include <http/server/server.hpp>
 
 using namespace http::server;
 

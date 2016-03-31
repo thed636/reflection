@@ -55,4 +55,4 @@ set(ext_CMAKE_ARGS
   -DCMAKE_CC_COMPILER=${CMAKE_CC_COMPILER}
 )
 
-subdirs (reflection http)
+subdirs (reflection http app)

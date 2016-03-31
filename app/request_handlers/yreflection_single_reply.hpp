@@ -8,13 +8,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef HTTP_REQUEST_HANDLER_HPP
-#define HTTP_REQUEST_HANDLER_HPP
+#ifndef APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_HPP
+#define APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_HPP
 
 #include <string>
 
-#include "reply.hpp"
-#include "request.hpp"
+#include <http/server/reply.hpp>
+#include <http/server/request.hpp>
 
 #include <model/data/mailbox.h>
 #include <model/reflection/message.h>
@@ -104,4 +104,4 @@ void request_handler::handle_request(const request& req, OnReply handler) {
 } // namespace server
 } // namespace http
 
-#endif // HTTP_REQUEST_HANDLER_HPP
+#endif // APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_HPP
