@@ -28,7 +28,7 @@ public:
     }
 
     explicit JsonWriter(const T & value) : gen(createGenerator()) {
-        applyVisitor(value, *this);
+        applyVisitor(value, *this, SequenceItemTag());
     }
 
     const char * result () {
@@ -41,78 +41,78 @@ public:
         return nullptr;
     }
 
-    template <typename ... Name>
-    void onValue(float f, Name&& ... name) {
-        onValue(static_cast<const double>(f), std::forward<Name>(name)...);
+    template <typename Tag>
+    void onValue(float f, Tag tag) {
+        onValue(static_cast<const double>(f), tag);
     }
 
-    template<typename Name>
-    void onValue(double d, Name&& name) {
-        addString(name);
-        onValue(d);
+    template<typename ... Args>
+    void onValue(double d, NamedItemTag<Args...> tag) {
+        addString(name(tag));
+        onValue(d, SequenceItemTag{});
     }
 
-    void onValue(double d) {
+    void onValue(double d, SequenceItemTag) {
         checkError(yajl_gen_double(gen.get(), d));
     }
 
-    template <typename ... Name>
-    void onValue(int i, Name&& ... name) {
-        onValue(static_cast<const long>(i), std::forward<Name>(name)...);
+    template <typename Tag>
+    void onValue(int i, Tag tag) {
+        onValue(static_cast<const long>(i), tag);
     }
 
-    template<typename Name>
-    void onValue(long l, Name&& name) {
-        addString(name);
-        onValue(l);
+    template <typename ... Args>
+        void onValue(long l, NamedItemTag<Args...> tag) {
+        addString(name(tag));
+        onValue(l, SequenceItemTag{});
     }
 
-    void onValue(long l) {
+    void onValue(long l, SequenceItemTag) {
         checkError( yajl_gen_integer(gen.get(), l) );
     }
 
-    template<typename Name>
-    void onValue(std::size_t s, Name&& name) {
-        addString(name);
-        onValue(s);
+    template<typename ... Args>
+    void onValue(std::size_t s, NamedItemTag<Args...> tag) {
+        addString(name(tag));
+        onValue(s, SequenceItemTag{});
     }
 
-    void onValue(std::size_t s) {
+    void onValue(std::size_t s, SequenceItemTag) {
         checkError( yajl_gen_integer(gen.get(), s) );
     }
 
-    template<typename Name>
-    void onValue(bool b, Name&& name) {
-        addString(name);
-        onValue(b);
+    template<typename ...Args>
+    void onValue(bool b, NamedItemTag<Args...> tag) {
+        addString(name(tag));
+        onValue(b, SequenceItemTag{});
     }
 
-    void onValue(bool b) {
+    void onValue(bool b, SequenceItemTag) {
         checkError( yajl_gen_bool(gen.get(), b) );
     }
 
-    template<typename Name>
-    void onValue(const std::string & s, Name&& name) {
-        addString(name);
-        onValue(s);
+    template<typename ...Args>
+    void onValue(const std::string & s, NamedItemTag<Args...> tag) {
+        addString(name(tag));
+        onValue(s, SequenceItemTag{});
     }
 
-    void onValue(const std::string & s) {
+    void onValue(const std::string & s, SequenceItemTag) {
         addString(s);
     }
 
-    template<typename P, typename ... Name>
-    void onValue(const P& p, Name&& ... name) {
-        onValue ( boost::lexical_cast<std::string>(p), std::forward<Name>(name)...);
+    template<typename P, typename Tag>
+    void onValue(const P& p, Tag tag) {
+        onValue ( boost::lexical_cast<std::string>(p), tag);
     }
 
-    template<typename Name>
-    JsonWriter onStructStart(Name&& name) {
-        addString( name );
-        return onStructStart();
+    template<typename ... Args>
+    JsonWriter onStructStart(NamedItemTag<Args...> tag) {
+        addString( name(tag) );
+        return onStructStart(SequenceItemTag{});
     }
 
-    JsonWriter onStructStart() {
+    JsonWriter onStructStart(SequenceItemTag) {
         checkError ( yajl_gen_map_open(gen.get()) );
         return *this;
     }
@@ -121,23 +121,23 @@ public:
         checkError( yajl_gen_map_close(gen.get()) );
     }
 
-    template<typename Map, typename ... Name>
-	JsonWriter onMapStart(const Map& , Name&& ... name) {
-        return onStructStart(std::forward<Name>(name)...);
+    template<typename Map, typename Tag>
+	JsonWriter onMapStart(const Map& , Tag tag) {
+        return onStructStart(tag);
     }
 
     void onMapEnd() {
         onStructEnd();
     }
 
-    template<typename Seq, typename Name>
-	JsonWriter onSequenceStart(const Seq& seq, Name&& name) {
-        addString( name );
-        return onSequenceStart(seq);
+    template<typename Seq, typename ... Args>
+	JsonWriter onSequenceStart(const Seq& seq, NamedItemTag<Args...> tag) {
+        addString( name(tag) );
+        return onSequenceStart(seq, SequenceItemTag());
     }
 
     template<typename P>
-    JsonWriter onSequenceStart(const P&) {
+    JsonWriter onSequenceStart(const P&, SequenceItemTag) {
         checkError(yajl_gen_array_open(gen.get()));
         return *this;
     }
@@ -146,20 +146,20 @@ public:
         checkError(yajl_gen_array_close(gen.get()));
     }
 
-    template <typename Ptree, typename ... Name >
-    void onPtree(const Ptree& tree, Name&& ... name) {
+    template <typename Ptree, typename Tag >
+    void onPtree(const Ptree& tree, Tag tag) {
         if (tree.size() == 0) {
-            onValue(tree.data(), std::forward<Name>(name)...);
+            onValue(tree.data(), tag);
         } else if (tree.front().first.empty()) {
-            onSequenceStart(tree, std::forward<Name>(name)...);
+            onSequenceStart(tree, tag);
             for (const auto& i : tree) {
-                applyVisitor(i.second, *this);
+                applyVisitor(i.second, *this, SequenceItemTag());
             }
             onSequenceEnd();
         } else {
-            onMapStart(tree, std::forward<Name>(name)...);
+            onMapStart(tree, tag);
             for (const auto& i : tree) {
-                applyVisitor(i.second, *this, i.first);
+                applyVisitor(i.second, *this, namedItemTag(i.first));
             }
             onMapEnd();
         }

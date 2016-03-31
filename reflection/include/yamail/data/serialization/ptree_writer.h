@@ -10,14 +10,14 @@ namespace yamail { namespace data { namespace serialization {
 using namespace yamail::data::reflection;
 using boost::property_tree::ptree;
 
-struct RootNodeNameTag {};
+struct RootNodeTag {};
 
 template<typename T>
 class PtreeWriter : public SerializeVisitor<T> {
 public:
     explicit PtreeWriter ( const T & value)  : root(std::make_shared<ptree>()) {
         level(*root);
-        applyVisitor(value, *this, RootNodeNameTag());
+        applyVisitor(value, *this, RootNodeTag());
     }
     explicit PtreeWriter ( const T & value, const std::string& rootName) : root(std::make_shared<ptree>()) {
         level(*root);
@@ -28,37 +28,41 @@ public:
         return *root;
     }
 
-    template<typename P, typename Name>
-    void onValue(const P & p, Name&& name) {
-        level().add(name, p);
+    template<typename P, typename ... Args>
+    void onValue(const P & p, NamedItemTag<Args...> tag) {
+        level().add(name(tag), p);
     }
 
     template<typename P>
-    void onValue(const P & p) { onValue(p, defaultValueName); }
+    void onValue(const P & p, SequenceItemTag) {
+        onValue(p, namedItemTag(defaultValueName));
+    }
 
-    template <typename Name>
-    PtreeWriter onStructStart(Name&& name) {
+    template <typename ... Args>
+    PtreeWriter onStructStart(NamedItemTag<Args...> tag) {
         auto retval =  *this;
-        retval.level(level().add_child(name, ptree()));
+        retval.level(level().add_child(name(tag), ptree()));
         return std::move(retval);
     }
 
-    PtreeWriter onStructStart(RootNodeNameTag) { return *this; }
+    PtreeWriter onStructStart(RootNodeTag) { return *this; }
 
-    PtreeWriter onStructStart() { return onStructStart(defaultValueName); }
+    PtreeWriter onStructStart(SequenceItemTag) {
+        return onStructStart(namedItemTag(defaultValueName));
+    }
 
     void onStructEnd() {}
 
-    template<typename P, typename ... Name>
-	PtreeWriter onMapStart(const P& , Name&& ... name) {
-        return onStructStart(std::forward<Name>(name)...);
+    template<typename P, typename Tag>
+	PtreeWriter onMapStart(const P& , Tag tag) {
+        return onStructStart(tag);
     }
 
     void onMapEnd() { onStructEnd(); }
 
-    template<typename P, typename ... Name>
-	PtreeWriter onSequenceStart(const P& , Name&& ... name) {
-        return onStructStart(std::forward<Name>(name)...);
+    template<typename P, typename Tag>
+	PtreeWriter onSequenceStart(const P& , Tag tag) {
+        return onStructStart(tag);
     }
 
     void onSequenceEnd() { onStructEnd(); }

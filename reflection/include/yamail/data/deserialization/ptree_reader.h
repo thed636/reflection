@@ -11,7 +11,7 @@ namespace yamail { namespace data { namespace deserialization {
 using namespace yamail::data::reflection;
 using boost::property_tree::ptree;
 
-struct RootNodeNameTag {};
+struct RootNodeTag {};
 
 template<typename T>
 class PtreeReader : public DeserializeVisitor<T> {
@@ -19,7 +19,7 @@ public:
     explicit PtreeReader ( ptree& pt ) : res(std::make_shared<T>()) {
         level( pt );
 
-        applyVisitor( *res, *this, RootNodeNameTag() );
+        applyVisitor( *res, *this, RootNodeTag() );
     }
 
     T result() const {
@@ -34,13 +34,13 @@ public:
         return *res;
     }
 
-    template <typename P, typename Name>
-    void onValue(P & p, Name&& name) {
-        p = level().template get<P>(ptree::path_type(name, '\0') );
+    template <typename P, typename ... Args>
+    void onValue(P & p, NamedItemTag<Args...> tag) {
+        p = level().template get<P>(ptree::path_type(name(tag), '\0') );
     }
 
     template <typename P>
-    void onValue(P & p) {
+    void onValue(P & p, SequenceItemTag) {
         if( iter() == level().end() ) {
             throw std::runtime_error("Nameless items iterator out of range in PtreeReader");
         }
@@ -48,16 +48,16 @@ public:
         ++iter();
     }
 
-    template <typename Name>
-    PtreeReader onStructStart(Name&& name) {
+    template <typename ... Args>
+    PtreeReader onStructStart(NamedItemTag<Args...> tag) {
         auto retval = *this;
-        retval.level( level().get_child(name) );
+        retval.level( level().get_child(name(tag)) );
         return std::move(retval);
     }
 
-    PtreeReader onStructStart(RootNodeNameTag) { return *this; }
+    PtreeReader onStructStart(RootNodeTag) { return *this; }
 
-    PtreeReader onStructStart() {
+    PtreeReader onStructStart(SequenceItemTag) {
         auto retval = *this;
         retval.level( iter()->second );
         ++iter();
@@ -66,9 +66,9 @@ public:
 
     void onStructEnd() {}
 
-    template <typename P, typename ... Name>
-    PtreeReader onMapStart(P & p, Name&& ... name) {
-        auto retval = onStructStart(std::forward<Name>(name)...);
+    template <typename P, typename Tag>
+    PtreeReader onMapStart(P & p, Tag tag) {
+        auto retval = onStructStart(tag);
         for( const auto & i : retval.level()) {
             p[i.first];
         }
@@ -77,36 +77,36 @@ public:
 
     void onMapEnd() { onStructEnd(); }
 
-    template <typename P, typename ... Name>
-    PtreeReader onSequenceStart(P & p, Name&& ... name) {
-        auto retval = onStructStart(std::forward<Name>(name)...);
+    template <typename P, typename Tag>
+    PtreeReader onSequenceStart(P & p, Tag tag) {
+        auto retval = onStructStart(tag);
         p.resize( retval.level().size() );
         return std::move(retval);
     }
 
-    template <typename P, std::size_t N, typename ... Name>
-    PtreeReader onSequenceStart(P (& p)[N], Name&& ... name) {
+    template <typename P, std::size_t N, typename Tag>
+    PtreeReader onSequenceStart(P (& p)[N], Tag tag) {
         (void)p;
-        return onStructStart(std::forward<Name>(name)...);
+        return onStructStart(tag);
     }
 
     void onSequenceEnd() { onStructEnd(); }
 
-    template <typename P, typename ... Name>
+    template <typename P, typename Tag>
     typename std::enable_if<!std::is_arithmetic<P>::value, bool>::type
-    onOptional(boost::optional<P> & p, Name&& ... name) {
-        return onOptionalImpl(p, std::forward<Name>(name)...);
+    onOptional(boost::optional<P> & p, Tag tag) {
+        return onOptionalImpl(p, tag);
     }
 
-    template <typename P, typename ... Name>
+    template <typename P, typename Tag>
     typename std::enable_if<std::is_arithmetic<P>::value, bool>::type
-    onOptional(boost::optional<P> & p, Name&& ... name) {
-        return onOptionalIntegral(p, std::forward<Name>(name)...);
+    onOptional(boost::optional<P> & p, Tag tag) {
+        return onOptionalIntegral(p, tag);
     }
 
-    template<typename P, typename Name>
-    bool onSmartPointer(P& p, Name&& name) {
-        const bool fieldFound = ( level().find( name ) != level().not_found() );
+    template<typename P, typename ... Args>
+    bool onSmartPointer(P& p, NamedItemTag<Args...> tag) {
+        const bool fieldFound = ( level().find( name(tag) ) != level().not_found() );
         if( fieldFound ) {
             p.reset(new typename P::element_type);
         }
@@ -114,13 +114,13 @@ public:
     }
 
     template<typename P>
-    bool onSmartPointer(P& p, RootNodeNameTag) {
+    bool onSmartPointer(P& p, RootNodeTag) {
         p.reset(new typename P::element_type);
         return true;
     }
 
     template<typename P>
-    bool onSmartPointer(P& p) {
+    bool onSmartPointer(P& p, SequenceItemTag) {
         const bool fieldFound = !level().empty();
         if( fieldFound ) {
             p.reset(new typename P::element_type);
@@ -128,9 +128,9 @@ public:
         return fieldFound;
     }
 
-    template<typename ... Name>
-    void onPtree(ptree& p, Name&& ... name) {
-        onStructStart(std::forward<Name>(name)...);
+    template<typename Tag>
+    void onPtree(ptree& p, Tag tag) {
+        onStructStart(tag);
         p = level();
         onStructEnd();
     }
@@ -150,10 +150,10 @@ private:
     ptree* level_ = nullptr;
     ptree::iterator iter_;
 
-    template <typename P, typename  Name>
-    bool onOptionalIntegral(boost::optional<P> & p, Name&& name) {
-        const bool optFieldFound = ( level().find( name ) != level().not_found() );
-        const bool hasValue = optFieldFound && !level().get_child(name).data().empty();
+    template <typename P, typename ... Args>
+    bool onOptionalIntegral(boost::optional<P> & p, NamedItemTag<Args...> tag) {
+        const bool optFieldFound = ( level().find( name(tag) ) != level().not_found() );
+        const bool hasValue = optFieldFound && !level().get_child(name(tag)).data().empty();
         if( hasValue ) {
             p = P();
         }
@@ -161,7 +161,7 @@ private:
     }
 
     template <typename P>
-    bool onOptionalIntegral(boost::optional<P> & p) {
+    bool onOptionalIntegral(boost::optional<P> & p, SequenceItemTag) {
         const bool optFieldFound = !level().empty();
         const bool hasValue = optFieldFound;
         if( hasValue ) {
@@ -170,9 +170,9 @@ private:
         return hasValue;
     }
 
-    template <typename P, typename Name>
-    bool onOptionalImpl(boost::optional<P> & p, Name&& name) {
-        const bool optFieldFound = (level().find( name ) != level().not_found());
+    template <typename P, typename ... Args>
+    bool onOptionalImpl(boost::optional<P> & p, NamedItemTag<Args...> tag) {
+        const bool optFieldFound = (level().find( name(tag) ) != level().not_found());
         if( optFieldFound ) {
             p = P();
         }
@@ -180,13 +180,13 @@ private:
     }
 
     template <typename P>
-    bool onOptionalImpl(boost::optional<P> & p, RootNodeNameTag) {
+    bool onOptionalImpl(boost::optional<P> & p, RootNodeTag) {
         p = P();
         return true;
     }
 
     template <typename P>
-    bool onOptionalImpl(boost::optional<P> & p) {
+    bool onOptionalImpl(boost::optional<P> & p, SequenceItemTag) {
         const bool optFieldFound = !level().empty();
         if( optFieldFound ) {
             p = P();
