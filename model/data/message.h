@@ -24,6 +24,7 @@ struct Message {
     Body body;
 };
 
+using Messages = std::vector<model::Message>;
 
 /**
  * To get message abstract - to do not get a full message text
