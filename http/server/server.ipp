@@ -8,21 +8,20 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "server.hpp"
 #include <signal.h>
 #include <utility>
 
 namespace http {
 namespace server {
 
-server::server(const std::string& address, const std::string& port,
-        const std::string& doc_root)
+template<typename RH>
+server<RH>::server(const std::string& address, const std::string& port, RH request_handler)
     : io_service_(),
       signals_(io_service_),
       acceptor_(io_service_),
       connection_manager_(),
       socket_(io_service_),
-      request_handler_(doc_root) {
+      request_handler_(std::move(request_handler)) {
     // Register to handle the signals that indicate when the server should exit.
     // It is safe to register for the same signal multiple times in a program,
     // provided all registration for the specified signal is made through Asio.
@@ -46,7 +45,8 @@ server::server(const std::string& address, const std::string& port,
     do_accept();
 }
 
-void server::run() {
+template<typename RH>
+void server<RH>::run() {
     // The io_service::run() call will block until all asynchronous operations
     // have finished. While the server is running, there is always at least one
     // asynchronous operation outstanding: the asynchronous accept call waiting
@@ -54,7 +54,8 @@ void server::run() {
     io_service_.run();
 }
 
-void server::do_accept() {
+template<typename RH>
+void server<RH>::do_accept() {
     acceptor_.async_accept(socket_, [this](boost::system::error_code ec) {
         // Check whether the server was stopped by a signal before this
         // completion handler had a chance to run.
@@ -63,7 +64,7 @@ void server::do_accept() {
             }
 
             if (!ec) {
-                connection_manager_.start(std::make_shared<connection>(
+                connection_manager_.start(std::make_shared<conn>(
                                 std::move(socket_), connection_manager_, request_handler_));
             }
 
@@ -71,7 +72,8 @@ void server::do_accept() {
         });
 }
 
-void server::do_await_stop() {
+template<typename RH>
+void server<RH>::do_await_stop() {
     signals_.async_wait([this](boost::system::error_code /*ec*/, int /*signo*/) {
         // The server is stopped by cancelling all outstanding asynchronous
         // operations. Once all operations have finished the io_service::run()

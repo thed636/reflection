@@ -42,6 +42,7 @@ set(reflection_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/reflection/include)
 set(gtest_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/googletest/googletest/include)
 set(gmock_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/googletest/googlemock/include)
 
+include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${reflection_INCLUDE_DIR})
 include_directories(${gtest_INCLUDE_DIR})
 include_directories(${gmock_INCLUDE_DIR})
@@ -54,4 +55,4 @@ set(ext_CMAKE_ARGS
   -DCMAKE_CC_COMPILER=${CMAKE_CC_COMPILER}
 )
 
-subdirs (reflection http)
+subdirs (reflection http app)

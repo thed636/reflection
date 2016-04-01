@@ -5,6 +5,9 @@
 #include <boost/system/error_code.hpp>
 #include <boost/optional.hpp>
 
+#include <boost/asio/coroutine.hpp>
+#include <boost/asio/yield.hpp>
+
 namespace model {
 
 using boost::system::error_code;
@@ -19,17 +22,27 @@ class Mailbox {
 public:
     Mailbox(Impl impl) : impl(std::move(impl)) {}
 
-    /**
-     * Handler wrapper specifies handler signature and default values for
-     * no message or error.
-     */
     template <typename Handler>
     struct OnMessage {
+        using Continuation = typename Impl::template Continuation<OnMessage<Handler>>;
         Handler h;
+        Continuation c;
+
+        OnMessage(Handler h) : h(std::move(h)), c(*this) {}
+
         void operator() (error_code e, optional<Message> m = optional<Message>()) {
-            h(e, m);
+            h(e, std::move(m), c);
+        }
+        void operator() (optional<Message> m) {
+            h(error_code(), std::move(m), c);
+        }
+        void operator() () {
+            c();
         }
     };
+
+    template<typename Handler>
+    using Continuation = typename OnMessage<Handler>::Continuation;
 
     /**
      * This method is modeling heaviest query for all messages in mailbox
@@ -56,9 +69,61 @@ public:
     }
 };
 
-template <typename Impl>
-Mailbox<Impl> mailbox(Impl impl) { return Mailbox<Impl>(std::move(impl));}
+/**
+ * Returns two default messages on any request
+ */
+class DummyImpl {
+public:
+	template <typename OnMessage>
+	void getMessages(OnMessage h) const {
+	    h();
+	}
+
+	template <typename OnMessage>
+	void getMessages(const Message::Id& /*id*/, OnMessage h) const {
+		getMessages(std::move(h));
+	}
+
+	template <typename OnMessage>
+	void getMessages(const Recipient& /*r*/, OnMessage h) const {
+		getMessages(std::move(h));
+	}
+
+	template<typename Handler>
+	struct Request : boost::asio::coroutine {
+	    Handler& h;
+	    Request(Handler& h) : boost::asio::coroutine(), h(h) {}
+
+	    void operator()() {
+	        static optional<Message> m = Message{
+	            Message::Id{"42-100500"},
+	            Message::Subject{"I love you Ozzy!"},
+	            Message::Recipients{
+	                Recipient{Recipient::Type::from, Email{"Vasya Pupkin", "vasya@yandex.ru"}},
+	                Recipient{Recipient::Type::to, Email{"Ozzy Osbourne", "ozzy@gmail.com"}},
+	            },
+	            Message::Body{"You are the best, and the Black Sabbath is the best Sabbath in the world!"}
+	        };
+
+	        reenter(*this) {
+                yield h(m);
+                yield h(m);
+                yield h(optional<Message>());
+	        }
+	    }
+	};
+
+	template<typename OnMessage>
+	using Continuation = Request<OnMessage>;
+};
+
+
+inline Mailbox<DummyImpl> dummyMailbox() {
+	return Mailbox<DummyImpl>(DummyImpl());
+}
 
 }
+
+#include <boost/asio/unyield.hpp>
 
 #endif /* MODEL_DATA_MAILBOX_H_ */

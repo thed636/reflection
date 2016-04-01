@@ -12,15 +12,17 @@
 #define HTTP_CONNECTION_MANAGER_HPP
 
 #include <set>
-#include "connection.hpp"
 
 namespace http {
 namespace server {
 
 /// Manages open connections so that they may be cleanly stopped when the server
 /// needs to shut down.
+template<typename Connection>
 class connection_manager {
 public:
+	using connection_ptr = std::shared_ptr<Connection>;
+
     connection_manager(const connection_manager&) = delete;
     connection_manager& operator=(const connection_manager&) = delete;
 
@@ -43,5 +45,7 @@ private:
 
 } // namespace server
 } // namespace http
+
+#include "connection_manager.ipp"
 
 #endif // HTTP_CONNECTION_MANAGER_HPP
