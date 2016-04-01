@@ -44,19 +44,17 @@ private:
     Mailbox mailbox;
 
     template<typename OnReply>
-    struct reply_collector : Mailbox::Continuation<reply_collector<OnReply>> {
+    struct reply_collector {
         OnReply handler;
         model::Messages messages;
 
         reply_collector(OnReply h) : handler(std::move(h)) {}
 
-        using base = Mailbox::Continuation<reply_collector<OnReply>>;
-
-        using base::operator();
-
+        template<typename Continuation>
         void operator()(
                 boost::system::error_code e,
-                boost::optional<model::Message> m) {
+                boost::optional<model::Message> m,
+                Continuation& cont) {
             if (e) {
                 handler(reply::stock_reply(reply::internal_server_error));
             } else if (!m) {
@@ -66,7 +64,7 @@ private:
                 handler(rep);
             } else {
                 messages.push_back(std::move(*m));
-                (*this)();
+                cont();
             }
         }
     };

@@ -31,16 +31,17 @@ struct Recipient {
 
     void setType(const std::string& s) {
         using RT = Recipient::Type;
-        std::map<std::string, Recipient::Type> str2type = {
-            {"from", RT::from},
-            {"to", RT::to},
-            {"cc", RT::cc},
-            {"bcc", RT::bcc}
-        };
-        if( str2type.count(s) ) {
-            type_ = str2type.at(s);
+        if( s == "from") {
+            type_ = RT::from;
+        } else if( s == "to" ) {
+            type_ = RT::to;
+        } else if( s == "cc" ) {
+            type_ = RT::cc;
+        } else if( s == "bcc" ) {
+            type_ = RT::bcc;
+        } else {
+            type_ = RT::unknown;
         }
-        type_ = RT::unknown;
     }
 
     const Email& email() const {

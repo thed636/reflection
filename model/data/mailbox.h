@@ -23,14 +23,33 @@ public:
     Mailbox(Impl impl) : impl(std::move(impl)) {}
 
     template <typename Handler>
-    using Continuation = typename Impl::template Continuation<Handler>;
+    struct OnMessage {
+        using Continuation = typename Impl::template Continuation<OnMessage<Handler>>;
+        Handler h;
+        Continuation c;
+
+        OnMessage(Handler h) : h(std::move(h)), c(*this) {}
+
+        void operator() (error_code e, optional<Message> m = optional<Message>()) {
+            h(e, std::move(m), c);
+        }
+        void operator() (optional<Message> m) {
+            h(error_code(), std::move(m), c);
+        }
+        void operator() () {
+            c();
+        }
+    };
+
+    template<typename Handler>
+    using Continuation = typename OnMessage<Handler>::Continuation;
 
     /**
      * This method is modeling heaviest query for all messages in mailbox
      */
     template <typename Handler>
     void getMessages(Handler h) const {
-        impl.getMessages(std::move(h));
+        impl.getMessages(OnMessage<Handler>{std::move(h)});
     }
 
     /**
@@ -38,7 +57,7 @@ public:
      */
     template <typename Handler>
     void getMessages(const Message::Id& id, Handler h) const {
-        impl.getMessages(id, std::move(h));
+        impl.getMessages(id, OnMessage<Handler>{std::move(h)});
     }
 
     /**
@@ -46,7 +65,7 @@ public:
      */
     template <typename Handler>
     void getMessages(const Recipient& r, Handler h) const {
-        impl.getMessages(r, std::move(h));
+        impl.getMessages(r, OnMessage<Handler>{std::move(h)});
     }
 };
 
@@ -70,11 +89,10 @@ public:
 		getMessages(std::move(h));
 	}
 
-	template<typename OnMessage>
+	template<typename Handler>
 	struct Request : boost::asio::coroutine {
-	    void handler(error_code e, optional<Message> m) {
-	        static_cast<OnMessage&>(*this)(e, std::move(m));
-	    }
+	    Handler& h;
+	    Request(Handler& h) : boost::asio::coroutine(), h(h) {}
 
 	    void operator()() {
 	        static optional<Message> m = Message{
@@ -88,9 +106,9 @@ public:
 	        };
 
 	        reenter(*this) {
-                yield handler(error_code(), m);
-                yield handler(error_code(), m);
-                yield handler(error_code(), optional<Message>());
+                yield h(m);
+                yield h(m);
+                yield h(optional<Message>());
 	        }
 	    }
 	};
