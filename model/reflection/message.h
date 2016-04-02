@@ -14,7 +14,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 	(model::Message::Body, body)
 )
 
-inline const char* serialize(const model::Messages& m) {
+inline yamail::data::serialization::yajl::Buffer serialize(const model::Messages& m) {
     return yamail::data::serialization::JsonWriter<model::Messages>(m, "messages").result();
 }
 

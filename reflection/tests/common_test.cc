@@ -319,7 +319,7 @@ TEST(ReflectionTest, serializeCStructJson) {
         "\"boolItem\":true,"
         "\"optVector1\":[]"
 "}";
-    ASSERT_EQ(expectedJson, jsonWriter.result());
+    ASSERT_EQ(expectedJson, jsonWriter.result().str());
 }
 
 TEST(ReflectionTest, serializeDStructJson) {
@@ -328,7 +328,7 @@ TEST(ReflectionTest, serializeDStructJson) {
     dObj.setNum(123);
     yamail::data::serialization::JsonWriter<DStruct> jsonWriter(dObj);
     const std::string expectedJson = "{\"getNum\":123,\"getStr\":\"qwe\"}";
-    ASSERT_EQ(expectedJson, jsonWriter.result());
+    ASSERT_EQ(expectedJson, jsonWriter.result().str());
 }
 
 
@@ -336,7 +336,7 @@ TEST(ReflectionTest, serializeTuple) {
     auto tuple = std::make_tuple(1, 2, "ZZZ");
     yamail::data::serialization::JsonWriter<decltype(tuple)> jsonWriter(tuple);
     const std::string expectedJson = "[1,2,\"ZZZ\"]";
-    ASSERT_EQ(expectedJson, jsonWriter.result());
+    ASSERT_EQ(expectedJson, jsonWriter.result().str());
 }
 
 TEST(ReflectionTest, deserializeDStructJson) {

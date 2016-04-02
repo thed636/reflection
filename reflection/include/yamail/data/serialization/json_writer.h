@@ -13,6 +13,31 @@ public:
     JsonError(const std::string& msg) : std::runtime_error(msg) {}
 };
 
+namespace yajl {
+
+using Handle = boost::shared_ptr<yajl_gen_t>;
+
+class Buffer {
+    Handle h;
+    const unsigned char *buf = nullptr;
+    std::size_t len = 0;
+public:
+    using const_iterator = const char*;
+    using iterator = const_iterator;
+    Buffer(Handle hh) : h(hh) {
+        yajl_gen_get_buf(h.get(), &buf, &len);
+    }
+    const_iterator begin() const { return reinterpret_cast<const_iterator>(buf);}
+    const_iterator end() const { return begin() + len; }
+    std::size_t size() const { return len; }
+    std::string str() const { return std::string{begin(), end()}; }
+    operator const char* () const { return begin(); }
+    operator std::string () const { return str(); }
+    bool operator !() const { return buf == nullptr; }
+};
+
+} // namespace yajl
+
 template<typename T>
 class JsonWriter : public SerializeVisitor<T> {
 
@@ -31,14 +56,8 @@ public:
         applyVisitor(value, *this, SequenceItemTag());
     }
 
-    const char * result () {
-        const unsigned char *buf = nullptr;
-        std::size_t len;
-        yajl_gen_get_buf(gen.get(), &buf, &len);
-        if (buf) {
-            return reinterpret_cast<const char *>(buf);
-        }
-        return nullptr;
+    yajl::Buffer result () {
+        return yajl::Buffer(gen);
     }
 
     template <typename Tag>

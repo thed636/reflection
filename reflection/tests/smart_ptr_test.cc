@@ -29,7 +29,7 @@ TEST(SmartPtrTest, serializeNullPtrs_outputNothing) {
     eObj.title = "EStruct";
     yamail::data::serialization::JsonWriter<EStruct> jsonWriter(eObj);
     const std::string expectedJson = "{\"title\":\"EStruct\"}";
-    ASSERT_EQ(expectedJson, jsonWriter.result());
+    ASSERT_EQ(expectedJson, jsonWriter.result().str());
 }
 
 TEST(SmartPtrTest, serializeNonNullPtrs_outputValues) {
@@ -40,7 +40,7 @@ TEST(SmartPtrTest, serializeNonNullPtrs_outputValues) {
     eObj.floatPtr.reset(new float(3.5));
     yamail::data::serialization::JsonWriter<EStruct> jsonWriter(eObj);
     const std::string expectedJson = "{\"title\":\"EStruct\",\"stringPtr\":\"value\",\"intPtr\":42,\"floatPtr\":3.5}";
-    ASSERT_EQ(expectedJson, jsonWriter.result());
+    ASSERT_EQ(expectedJson, jsonWriter.result().str());
 }
 
 TEST(SmartPtrTest, deserializeNothingToSmartPtr_resetPtrToNull) {
