@@ -54,8 +54,7 @@ TEST(GetterSetterTest, deserializeStructWithMapFromJson_sameObject) {
     dict["k3"] = "v3";
     obj.setDict(dict);
 
-    JsonWriter<ClassWithMap> jsonWriter(obj);
-    const std::string json = jsonWriter.result();
+    const auto json = toJson(obj).str();
 
     std::istringstream jsonStream(json);
     boost::property_tree::ptree tree;

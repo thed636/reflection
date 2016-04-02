@@ -10,22 +10,18 @@ namespace yamail { namespace data { namespace serialization {
 using namespace yamail::data::reflection;
 using boost::property_tree::ptree;
 
+namespace property_tree {
+
 struct RootNodeTag {};
 
 template<typename T>
-class PtreeWriter : public SerializeVisitor<T> {
+class Writer : public SerializeVisitor<T> {
 public:
-    explicit PtreeWriter ( const T & value)  : root(std::make_shared<ptree>()) {
-        level(*root);
-        applyVisitor(value, *this, RootNodeTag());
-    }
-    explicit PtreeWriter ( const T & value, const std::string& rootName) : root(std::make_shared<ptree>()) {
-        level(*root);
-        applyVisitor(value, *this, rootName);
+    explicit Writer (ptree & root) : level_(&root) {
     }
 
-    ptree& result() {
-        return *root;
+    void apply(const T & value) {
+        applyVisitor(value, *this, RootNodeTag());
     }
 
     template<typename P, typename ... Args>
@@ -39,17 +35,15 @@ public:
     }
 
     template <typename Struct, typename ... Args>
-    PtreeWriter onStructStart(const Struct& , NamedItemTag<Args...> tag) {
-        auto retval =  *this;
-        retval.level(level().add_child(name(tag), ptree()));
-        return std::move(retval);
+    Writer onStructStart(const Struct& , NamedItemTag<Args...> tag) {
+        return Writer(level().add_child(name(tag), ptree()));
     }
 
     template <typename Struct>
-    PtreeWriter onStructStart(const Struct& , RootNodeTag) { return *this; }
+    Writer onStructStart(const Struct& , RootNodeTag) { return *this; }
 
     template <typename Struct>
-    PtreeWriter onStructStart(const Struct& s, SequenceItemTag) {
+    Writer onStructStart(const Struct& s, SequenceItemTag) {
         return onStructStart(s, namedItemTag(defaultValueName));
     }
 
@@ -57,7 +51,7 @@ public:
     void onStructEnd(const Struct& , Tag) {}
 
     template<typename Map, typename Tag>
-    PtreeWriter onMapStart(const Map& m, Tag tag) {
+    Writer onMapStart(const Map& m, Tag tag) {
         return onStructStart(m, tag);
     }
 
@@ -65,18 +59,31 @@ public:
     void onMapEnd(const Map&, Tag) {}
 
     template<typename Sequence, typename Tag>
-    PtreeWriter onSequenceStart(const Sequence& s, Tag tag) {
+    Writer onSequenceStart(const Sequence& s, Tag tag) {
         return onStructStart(s, tag);
     }
 
 private:
     std::string defaultValueName = "value";
     ptree* level_ = nullptr;
-    std::shared_ptr<ptree> root;
 
     ptree& level() const { return *level_; }
-    void level(ptree& v) { level_ = &v; }
 };
+
+} // namespace property_tree
+
+template <typename T>
+ptree & toPtree(ptree& p, const T& v) {
+    property_tree::Writer<T>(p).apply(v);
+    return p;
+}
+
+template <typename T>
+ptree toPtree(const T& v) {
+    ptree p;
+    toPtree(p, v);
+    return std::move(p);
+}
 
 }}}
 

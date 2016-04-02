@@ -27,9 +27,9 @@ BOOST_FUSION_ADAPT_STRUCT(EStruct,
 TEST(SmartPtrTest, serializeNullPtrs_outputNothing) {
     EStruct eObj;
     eObj.title = "EStruct";
-    yamail::data::serialization::JsonWriter<EStruct> jsonWriter(eObj);
+    const auto r = yamail::data::serialization::toJson(eObj);
     const std::string expectedJson = "{\"title\":\"EStruct\"}";
-    ASSERT_EQ(expectedJson, jsonWriter.result().str());
+    ASSERT_EQ(expectedJson, r.str());
 }
 
 TEST(SmartPtrTest, serializeNonNullPtrs_outputValues) {
@@ -38,9 +38,9 @@ TEST(SmartPtrTest, serializeNonNullPtrs_outputValues) {
     eObj.stringPtr.reset(new std::string("value"));
     eObj.intPtr.reset(new int(42));
     eObj.floatPtr.reset(new float(3.5));
-    yamail::data::serialization::JsonWriter<EStruct> jsonWriter(eObj);
+    const auto r = yamail::data::serialization::toJson(eObj);
     const std::string expectedJson = "{\"title\":\"EStruct\",\"stringPtr\":\"value\",\"intPtr\":42,\"floatPtr\":3.5}";
-    ASSERT_EQ(expectedJson, jsonWriter.result().str());
+    ASSERT_EQ(expectedJson, r.str());
 }
 
 TEST(SmartPtrTest, deserializeNothingToSmartPtr_resetPtrToNull) {

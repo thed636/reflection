@@ -17,6 +17,22 @@ namespace yajl {
 
 using Handle = boost::shared_ptr<yajl_gen_t>;
 
+inline Handle createGenerator() {
+    Handle result( yajl_gen_alloc(nullptr),  yajl_gen_free );
+    if (result.get() == nullptr) {
+        throw JsonError("yajl_gen_alloc failed");
+    }
+    return result;
+}
+
+inline void checkError(int errorCode) {
+   if ( errorCode != yajl_gen_status_ok ) {
+       std::stringstream s;
+       s << "yajl::Writer error " << errorCode;
+       throw JsonError(s.str());
+   }
+}
+
 class Buffer {
     Handle h;
     const unsigned char *buf = nullptr;
@@ -25,39 +41,31 @@ public:
     using const_iterator = const char*;
     using iterator = const_iterator;
     Buffer(Handle hh) : h(hh) {
-        yajl_gen_get_buf(h.get(), &buf, &len);
+        checkError(yajl_gen_get_buf(h.get(), &buf, &len));
     }
-    const_iterator begin() const { return reinterpret_cast<const_iterator>(buf);}
-    const_iterator end() const { return begin() + len; }
-    std::size_t size() const { return len; }
+    const_iterator begin() const noexcept { return reinterpret_cast<const_iterator>(buf);}
+    const_iterator end() const noexcept { return begin() + len; }
+    std::size_t size() const noexcept { return len; }
     std::string str() const { return std::string{begin(), end()}; }
-    operator const char* () const { return begin(); }
+    operator const char* () const noexcept { return begin(); }
     operator std::string () const { return str(); }
-    bool operator !() const { return buf == nullptr; }
+    bool operator !() const noexcept { return buf == nullptr; }
 };
 
-} // namespace yajl
-
 template<typename T>
-class JsonWriter : public SerializeVisitor<T> {
-
-    typedef boost::shared_ptr<yajl_gen_t> GeneratorPtr;
-
+class Writer : public SerializeVisitor<T> {
 public:
-    explicit JsonWriter (const T& value, const std::string& rootName) :
-        gen(createGenerator())
-    {
+    explicit Writer (Handle gen) : gen(gen) {
+    }
+
+    void apply(const T& value, const std::string& rootName) {
         checkError ( yajl_gen_map_open(gen.get()) );
         applyVisitor(value, *this, rootName);
         checkError ( yajl_gen_map_close(gen.get()) );
     }
 
-    explicit JsonWriter(const T & value) : gen(createGenerator()) {
+    void apply(const T & value) {
         applyVisitor(value, *this, SequenceItemTag());
-    }
-
-    yajl::Buffer result () {
-        return yajl::Buffer(gen);
     }
 
     template <typename Tag>
@@ -126,13 +134,13 @@ public:
     }
 
     template<typename Struct, typename ... Args>
-    JsonWriter onStructStart(const Struct& p, NamedItemTag<Args...> tag) {
+    Writer onStructStart(const Struct& p, NamedItemTag<Args...> tag) {
         addString( name(tag) );
         return onStructStart(p, SequenceItemTag{});
     }
 
     template<typename Struct>
-    JsonWriter onStructStart(const Struct&, SequenceItemTag) {
+    Writer onStructStart(const Struct&, SequenceItemTag) {
         checkError ( yajl_gen_map_open(gen.get()) );
         return *this;
     }
@@ -143,23 +151,23 @@ public:
     }
 
     template<typename Map, typename Tag>
-    JsonWriter onMapStart(const Map& m, Tag tag) {
+    Writer onMapStart(const Map& m, Tag tag) {
         return onStructStart(m, tag);
     }
 
     template<typename Map, typename Tag>
-	void onMapEnd(const Map&, Tag) {
+    void onMapEnd(const Map&, Tag) {
         checkError( yajl_gen_map_close(gen.get()) );
     }
 
     template<typename Seq, typename ... Args>
-	JsonWriter onSequenceStart(const Seq& seq, NamedItemTag<Args...> tag) {
+    Writer onSequenceStart(const Seq& seq, NamedItemTag<Args...> tag) {
         addString( name(tag) );
         return onSequenceStart(seq, SequenceItemTag());
     }
 
     template<typename Seq>
-    JsonWriter onSequenceStart(const Seq&, SequenceItemTag) {
+    Writer onSequenceStart(const Seq&, SequenceItemTag) {
         checkError(yajl_gen_array_open(gen.get()));
         return *this;
     }
@@ -189,22 +197,6 @@ public:
     }
 
 private:
-     void checkError ( const int errorCode ) const {
-        if ( errorCode != yajl_gen_status_ok ) {
-            std::stringstream s;
-            s << "JsonWriter error " << errorCode;
-            throw JsonError(s.str());
-        }
-    }
-
-    GeneratorPtr createGenerator() const {
-        GeneratorPtr result( yajl_gen_alloc(nullptr),  yajl_gen_free );
-        if (result.get() == nullptr) {
-            throw JsonError("yajl_gen_alloc failed");
-        }
-        return result;
-    }
-
     void addString ( const std::string & str ) {
         checkError( yajl_gen_string(gen.get(),
                     reinterpret_cast<const unsigned char*>(str.c_str()),
@@ -212,8 +204,23 @@ private:
     }
 
     std::string defaultValueName = "value";
-    GeneratorPtr gen;
+    Handle gen;
 };
+} // namespace yajl
+
+template <typename T>
+inline yajl::Buffer toJson(const T& v) {
+    auto h = yajl::createGenerator();
+    yajl::Writer<T>(h).apply(v);
+    return yajl::Buffer(h);
+}
+
+template <typename T>
+inline yajl::Buffer toJson(const T& v, const std::string& rootName) {
+    auto h = yajl::createGenerator();
+    yajl::Writer<T>(h).apply(v, rootName);
+    return yajl::Buffer(h);
+}
 
 }}}
 

@@ -152,11 +152,11 @@ using namespace testing;
 TEST(ReflectionTest, serializeCStructPtree) {
     CStruct cObj;
     init( cObj );
-    yamail::data::serialization::PtreeWriter<CStruct> ptreeWriter(cObj);
-    const auto r = yamail::data::deserialization::fromPtree<CStruct>( ptreeWriter.result() );
+    auto p = yamail::data::serialization::toPtree(cObj);
+    const auto r = yamail::data::deserialization::fromPtree<CStruct>(p);
     ASSERT_TRUE( r == cObj);
     std::ostringstream xml;
-    boost::property_tree::xml_parser::write_xml(xml,ptreeWriter.result());
+    boost::property_tree::xml_parser::write_xml(xml, p);
 
     const std::string expectedXml =
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
@@ -223,7 +223,7 @@ TEST(ReflectionTest, serializeCStructPtree) {
     ASSERT_EQ(expectedXml, xml.str());
 
     std::ostringstream json;
-    boost::property_tree::json_parser::write_json(json,ptreeWriter.result());
+    boost::property_tree::json_parser::write_json(json, p);
     const std::string expectedJson = "{\n"
 "    \"bObj\": {\n"
 "        \"intItem\": \"100\",\n"
@@ -290,7 +290,7 @@ TEST(ReflectionTest, serializeCStructPtree) {
 TEST(ReflectionTest, serializeCStructJson) {
     CStruct cObj;
     init(cObj);
-    yamail::data::serialization::JsonWriter<CStruct> jsonWriter(cObj);
+    const auto r = yamail::data::serialization::toJson(cObj);
     const std::string expectedJson = "{"
         "\"bObj\":{"
             "\"intItem\":100,"
@@ -319,31 +319,31 @@ TEST(ReflectionTest, serializeCStructJson) {
         "\"boolItem\":true,"
         "\"optVector1\":[]"
 "}";
-    ASSERT_EQ(expectedJson, jsonWriter.result().str());
+    ASSERT_EQ(expectedJson, r.str());
 }
 
 TEST(ReflectionTest, serializeDStructJson) {
     DStruct dObj;
     dObj.setStr("qwe");
     dObj.setNum(123);
-    yamail::data::serialization::JsonWriter<DStruct> jsonWriter(dObj);
+    const auto r = yamail::data::serialization::toJson(dObj);
     const std::string expectedJson = "{\"getNum\":123,\"getStr\":\"qwe\"}";
-    ASSERT_EQ(expectedJson, jsonWriter.result().str());
+    ASSERT_EQ(expectedJson, r.str());
 }
 
 
 TEST(ReflectionTest, serializeTuple) {
     auto tuple = std::make_tuple(1, 2, "ZZZ");
-    yamail::data::serialization::JsonWriter<decltype(tuple)> jsonWriter(tuple);
+    const auto r = yamail::data::serialization::toJson(tuple);
     const std::string expectedJson = "[1,2,\"ZZZ\"]";
-    ASSERT_EQ(expectedJson, jsonWriter.result().str());
+    ASSERT_EQ(expectedJson, r.str());
 }
 
 TEST(ReflectionTest, deserializeDStructJson) {
     DStruct dObj;
     dObj.setStr("qwe");
     dObj.setNum(123);
-    yamail::data::serialization::PtreeWriter<DStruct> ptreeWriter(dObj);
-    const auto dObj2 = yamail::data::deserialization::fromPtree<DStruct>( ptreeWriter.result() );
+    auto p = yamail::data::serialization::toPtree(dObj);
+    const auto dObj2 = yamail::data::deserialization::fromPtree<DStruct>(p);
     ASSERT_TRUE( dObj == dObj2 );
 }

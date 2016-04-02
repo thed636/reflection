@@ -22,8 +22,7 @@ TEST(PtreeReflectionTest, serializePtree_outputJson) {
     obj.tree.put("3.1", "v31");
     obj.tree.put("3.2", "v32");
 
-    yamail::data::serialization::JsonWriter<FStruct> jsonWriter(obj);
-    const std::string actual = jsonWriter.result();
+    const auto actual = yamail::data::serialization::toJson(obj).str();
     const std::string expected = "{\"tree\":{\"1\":\"v1\",\"2\":\"v2\",\"3\":{\"1\":\"v31\",\"2\":\"v32\"}}}";
     ASSERT_EQ(expected, actual);
 }
