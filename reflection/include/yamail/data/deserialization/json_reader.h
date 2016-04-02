@@ -8,61 +8,26 @@
 namespace yamail { namespace data { namespace deserialization {
 
 using namespace yamail::data::reflection;
+namespace json {
 
 template<typename T>
-class JsonReader : public DeserializeVisitor<T> {
+class Reader : public DeserializeVisitor<T> {};
 
-public:
-    explicit JsonReader(const std::string& json)
-    {
-        boost::property_tree::ptree tree = common::jsonToPtree(json);
-        PtreeReader<T> ptreeReader(tree);
-        res_ = ptreeReader.result();
-    }
+} // namespace json
 
-    T result() const {
-        return res_;
-    }
+template <typename T>
+inline void fromJson(const std::string& json, T& v) {
+    auto tree = common::jsonToPtree(json);
+    fromPtree(tree, v);
+}
 
-    T& resultRef() {
-        return res_;
-    }
+template <typename T>
+inline T fromJson(const std::string& json) {
+    T retval;
+    fromJson(json, retval);
+    return std::move(retval);
+}
 
-    template <typename P, typename ... Name>
-    void onValue(P& , Name&& ... ) {
-        throw std::logic_error( "NYI" );
-    }
-
-    template <typename ... Name>
-    void onStructStart(Name&& ... ) {
-        throw std::logic_error( "NYI" );
-    }
-
-    void onStructEnd() {
-        throw std::logic_error( "NYI" );
-    }
-
-    template <typename Map, typename ... Name>
-    void onMapStart(Map& , Name&& ... ) {
-        throw std::logic_error( "NYI" );
-    }
-
-    void onMapEnd() {
-        throw std::logic_error( "NYI" );
-    }
-
-    template <typename Seq, typename ... Name>
-    void onSequenceStart(Seq& , Name&& ... ) {
-        throw std::logic_error( "NYI" );
-    }
-
-    void onSequenceEnd() {
-        throw std::logic_error( "NYI" );
-    }
-
-private:
-    T res_;
-};
 
 }}}
 

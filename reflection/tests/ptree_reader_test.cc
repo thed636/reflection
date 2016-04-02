@@ -30,8 +30,8 @@ TEST(PtreeReaderTest, deserializeKeyWithPoint_setKeyWithPoint) {
     std::istringstream jsonStream(json);
     boost::property_tree::ptree tree;
     boost::property_tree::json_parser::read_json(jsonStream, tree);
-    PtreeReader<StructWithMap> ptreeReader(tree.get_child("root"));
-    const StructWithMap deserialized = ptreeReader.result();
+
+    const auto deserialized = fromPtree<StructWithMap>(tree.get_child("root"));
 
     StructWithMap expected;
     expected.title = "object";
@@ -59,8 +59,8 @@ TEST(PtreeReaderTest, deserializeNull_setUninitializedOptional) {
     std::istringstream jsonStream(json);
     boost::property_tree::ptree tree;
     boost::property_tree::json_parser::read_json(jsonStream, tree);
-    PtreeReader<StructWithOptional> ptreeReader(tree.get_child("optional"));
-    const auto deserialized = ptreeReader.result();
+
+    const auto deserialized = fromPtree<StructWithOptional>(tree.get_child("optional"));
 
     StructWithOptional expected;
 

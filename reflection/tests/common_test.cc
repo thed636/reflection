@@ -153,8 +153,8 @@ TEST(ReflectionTest, serializeCStructPtree) {
     CStruct cObj;
     init( cObj );
     yamail::data::serialization::PtreeWriter<CStruct> ptreeWriter(cObj);
-    yamail::data::deserialization::PtreeReader<CStruct> ptreeReader( ptreeWriter.result() );
-    ASSERT_TRUE( ptreeReader.result() == cObj);
+    const auto r = yamail::data::deserialization::fromPtree<CStruct>( ptreeWriter.result() );
+    ASSERT_TRUE( r == cObj);
     std::ostringstream xml;
     boost::property_tree::xml_parser::write_xml(xml,ptreeWriter.result());
 
@@ -344,7 +344,6 @@ TEST(ReflectionTest, deserializeDStructJson) {
     dObj.setStr("qwe");
     dObj.setNum(123);
     yamail::data::serialization::PtreeWriter<DStruct> ptreeWriter(dObj);
-    yamail::data::deserialization::PtreeReader<DStruct> ptreeReader( ptreeWriter.result() );
-    DStruct dObj2 = ptreeReader.result();
+    const auto dObj2 = yamail::data::deserialization::fromPtree<DStruct>( ptreeWriter.result() );
     ASSERT_TRUE( dObj == dObj2 );
 }

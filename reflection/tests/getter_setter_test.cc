@@ -60,8 +60,7 @@ TEST(GetterSetterTest, deserializeStructWithMapFromJson_sameObject) {
     std::istringstream jsonStream(json);
     boost::property_tree::ptree tree;
     boost::property_tree::json_parser::read_json(jsonStream, tree);
-    PtreeReader<ClassWithMap> ptreeReader(tree);
-    const ClassWithMap deserialized = ptreeReader.result();
+    const auto deserialized = fromPtree<ClassWithMap> (tree);
 
     ASSERT_TRUE(obj == deserialized);
 }

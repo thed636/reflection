@@ -48,8 +48,9 @@ TEST(SmartPtrTest, deserializeNothingToSmartPtr_resetPtrToNull) {
     std::istringstream jsonStream(json);
     boost::property_tree::ptree tree;
     boost::property_tree::json_parser::read_json(jsonStream, tree);
-    yamail::data::deserialization::PtreeReader<EStruct> treeReader(tree);
-    const EStruct& actual = treeReader.resultRef();
+
+    EStruct actual;
+    yamail::data::deserialization::fromPtree(tree, actual);
     ASSERT_FALSE(actual.stringPtr.get());
     ASSERT_FALSE(actual.intPtr.get());
 }
@@ -59,8 +60,9 @@ TEST(SmartPtrTest, deserializeValueToSmartPtr_resetPtr) {
     std::istringstream jsonStream(json);
     boost::property_tree::ptree tree;
     boost::property_tree::json_parser::read_json(jsonStream, tree);
-    yamail::data::deserialization::PtreeReader<EStruct> treeReader(tree);
-    const EStruct& actual = treeReader.resultRef();
+
+    EStruct actual;
+    yamail::data::deserialization::fromPtree(tree, actual);
     ASSERT_TRUE(actual.stringPtr.get());
     ASSERT_EQ("value", *actual.stringPtr);
     ASSERT_TRUE(actual.intPtr.get());

@@ -11,27 +11,18 @@ namespace yamail { namespace data { namespace deserialization {
 using namespace yamail::data::reflection;
 using boost::property_tree::ptree;
 
+namespace property_tree {
+
 struct RootNodeTag {};
 
 template<typename T>
-class PtreeReader : public DeserializeVisitor<T> {
+class Reader : public DeserializeVisitor<T> {
 public:
-    explicit PtreeReader ( ptree& pt ) : res(std::make_shared<T>()) {
-        level( pt );
-
-        applyVisitor( *res, *this, RootNodeTag() );
+    explicit Reader ( ptree& pt ) : level_ (&pt), iter_(level().begin()) {
     }
 
-    T result() const {
-        return *res;
-    }
-
-    T& resultRef() {
-        return *res;
-    }
-
-    const T& resultRef() const {
-        return *res;
+    void apply(T& res) {
+        applyVisitor( res, *this, RootNodeTag() );
     }
 
     template <typename Value, typename ... Args>
@@ -49,25 +40,20 @@ public:
     }
 
     template <typename Struct, typename ... Args>
-    PtreeReader onStructStart(Struct& , NamedItemTag<Args...> tag) {
-        auto retval = *this;
-        retval.level( level().get_child(name(tag)) );
-        return std::move(retval);
+    Reader onStructStart(Struct& , NamedItemTag<Args...> tag) {
+        return Reader( level().get_child(name(tag)) );
     }
 
     template <typename Struct>
-    PtreeReader onStructStart(Struct& , RootNodeTag) { return *this; }
+    Reader onStructStart(Struct& , RootNodeTag) { return *this; }
 
     template <typename Struct>
-    PtreeReader onStructStart(Struct& , SequenceItemTag) {
-        auto retval = *this;
-        retval.level( iter()->second );
-        ++iter();
-        return std::move(retval);
+    Reader onStructStart(Struct& , SequenceItemTag) {
+        return Reader( (iter()++)->second );
     }
 
     template <typename Map, typename Tag>
-    PtreeReader onMapStart(Map & p, Tag tag) {
+    Reader onMapStart(Map & p, Tag tag) {
         auto retval = onStructStart(p, tag);
         for( const auto & i : retval.level()) {
             p[i.first];
@@ -76,14 +62,14 @@ public:
     }
 
     template <typename Sequence, typename Tag>
-    PtreeReader onSequenceStart(Sequence & p, Tag tag) {
+    Reader onSequenceStart(Sequence & p, Tag tag) {
         auto retval = onStructStart(p, tag);
         p.resize( retval.level().size() );
         return std::move(retval);
     }
 
     template <typename Sequence, std::size_t N, typename Tag>
-    PtreeReader onSequenceStart(Sequence (& p)[N], Tag tag) {
+    Reader onSequenceStart(Sequence (& p)[N], Tag tag) {
         return onStructStart(p, tag);
     }
 
@@ -131,17 +117,10 @@ public:
     }
 
 private:
-    std::shared_ptr<T> res;
-
-    std::string defaultValueName = "value";
-
     ptree & level() const { return *level_; }
-    void level(ptree &v) {
-        level_ = &v;
-        iter_ = v.begin();
-    }
     ptree::iterator & iter() { return iter_; }
 
+    std::string defaultValueName = "value";
     ptree* level_ = nullptr;
     ptree::iterator iter_;
 
@@ -189,6 +168,20 @@ private:
         return optFieldFound;
     }
 };
+
+} // namespace property_tree
+
+template <typename T>
+inline void fromPtree(ptree& p, T& v) {
+    property_tree::Reader<T>(p).apply(v);
+}
+
+template <typename T>
+inline T fromPtree(ptree& p) {
+    T retval;
+    fromPtree(p, retval);
+    return std::move(retval);
+}
 
 }}}
 

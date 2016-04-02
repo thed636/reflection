@@ -24,8 +24,8 @@ BOOST_FUSION_ADAPT_STRUCT(SimpleStruct,
 
 TEST(JsonReaderTest, SimpleStruct) {
     const std::string json = "{\"str\": \"blablabla\", \"num\": 15, \"val\": 2.4}";
-    yamail::data::deserialization::JsonReader<SimpleStruct> jsonReader(json);
-    const SimpleStruct actual = jsonReader.result();
+
+    const auto actual = yamail::data::deserialization::fromJson<SimpleStruct>(json);
 
     SimpleStruct expected;
     expected.str = "blablabla";
@@ -49,8 +49,8 @@ BOOST_FUSION_ADAPT_STRUCT(StructWithMap2,
 
 TEST(JsonReaderTest, StructWithMap2) {
     const std::string json = "{\"stringMap\": {\"k1\": \"v1\", \"k2\": \"v2\", \"k3\": \"v3\"}}";
-    yamail::data::deserialization::JsonReader<StructWithMap2> jsonReader(json);
-    const StructWithMap2 actual = jsonReader.result();
+
+    const auto actual = yamail::data::deserialization::fromJson<StructWithMap2>(json);
 
     StructWithMap2 expected;
     expected.stringMap["k1"] = "v1";
@@ -74,8 +74,8 @@ BOOST_FUSION_ADAPT_STRUCT(StructWithVector,
 
 TEST(JsonReaderTest, StructWithVector) {
     const std::string json = "{\"intVector\": [1, 2, 3]}";
-    yamail::data::deserialization::JsonReader<StructWithVector> jsonReader(json);
-    const StructWithVector actual = jsonReader.result();
+
+    const auto actual = yamail::data::deserialization::fromJson<StructWithVector>(json);
 
     StructWithVector expected;
     expected.intVector.push_back(1);
@@ -102,8 +102,7 @@ BOOST_FUSION_ADAPT_STRUCT(StructWithOptional<Type>, \
 STRUCT_WITH_OPTIONAL(Type) \
 TEST(JsonReaderTest, read_null_value_should_left_uninitialized_optional_##Type) { \
     const std::string json = R"json({"optional_value": null})json"; \
-    yamail::data::deserialization::JsonReader<StructWithOptional<Type>> jsonReader(json); \
-    const StructWithOptional<Type> actual = jsonReader.result(); \
+    const auto actual = yamail::data::deserialization::fromJson<StructWithOptional<Type>>(json); \
     ASSERT_TRUE(StructWithOptional<Type>() == actual); \
 }
 
@@ -125,10 +124,9 @@ TEST_STRUCT_WITH_OPTIONAL_VALUE_WHEN_NULL(double)
 
 STRUCT_WITH_OPTIONAL(std::string)
 
-TEST(JsonReaderTest, read_null_value_should_left_uninitialized_optional_string) { \
-    const std::string json = R"json({"optional_value": null})json"; \
-    yamail::data::deserialization::JsonReader<StructWithOptional<std::string>> jsonReader(json);
-    const StructWithOptional<std::string> actual = jsonReader.result();
+TEST(JsonReaderTest, read_null_value_should_left_uninitialized_optional_string) {
+    const std::string json = R"json({"optional_value": null})json";
+    const auto actual = yamail::data::deserialization::fromJson<StructWithOptional<std::string>>(json);
     ASSERT_TRUE(StructWithOptional<std::string> {std::string()} == actual);
 }
 
@@ -149,8 +147,7 @@ BOOST_FUSION_ADAPT_STRUCT(StructWith<Type>, \
 STRUCT_WITH(Type) \
 TEST(JsonReaderTest, read_null_value_should_set_empty_##Type) { \
     const std::string json = R"json({"value": null})json"; \
-    yamail::data::deserialization::JsonReader<StructWith<Type>> jsonReader(json); \
-    const StructWith<Type> actual = jsonReader.result(); \
+    const auto actual = yamail::data::deserialization::fromJson<StructWith<Type>>(json); \
     ASSERT_TRUE(StructWith<Type>() == actual); \
 }
 
