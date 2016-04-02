@@ -38,34 +38,36 @@ public:
         onValue(p, namedItemTag(defaultValueName));
     }
 
-    template <typename ... Args>
-    PtreeWriter onStructStart(NamedItemTag<Args...> tag) {
+    template <typename Struct, typename ... Args>
+    PtreeWriter onStructStart(const Struct& , NamedItemTag<Args...> tag) {
         auto retval =  *this;
         retval.level(level().add_child(name(tag), ptree()));
         return std::move(retval);
     }
 
-    PtreeWriter onStructStart(RootNodeTag) { return *this; }
+    template <typename Struct>
+    PtreeWriter onStructStart(const Struct& , RootNodeTag) { return *this; }
 
-    PtreeWriter onStructStart(SequenceItemTag) {
-        return onStructStart(namedItemTag(defaultValueName));
+    template <typename Struct>
+    PtreeWriter onStructStart(const Struct& s, SequenceItemTag) {
+        return onStructStart(s, namedItemTag(defaultValueName));
     }
 
-    void onStructEnd() {}
+    template <typename Struct, typename Tag>
+    void onStructEnd(const Struct& , Tag) {}
 
-    template<typename P, typename Tag>
-	PtreeWriter onMapStart(const P& , Tag tag) {
-        return onStructStart(tag);
+    template<typename Map, typename Tag>
+    PtreeWriter onMapStart(const Map& m, Tag tag) {
+        return onStructStart(m, tag);
     }
 
-    void onMapEnd() { onStructEnd(); }
+    template <typename Map, typename Tag>
+    void onMapEnd(const Map&, Tag) {}
 
-    template<typename P, typename Tag>
-	PtreeWriter onSequenceStart(const P& , Tag tag) {
-        return onStructStart(tag);
+    template<typename Sequence, typename Tag>
+    PtreeWriter onSequenceStart(const Sequence& s, Tag tag) {
+        return onStructStart(s, tag);
     }
-
-    void onSequenceEnd() { onStructEnd(); }
 
 private:
     std::string defaultValueName = "value";

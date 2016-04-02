@@ -34,63 +34,58 @@ public:
         return *res;
     }
 
-    template <typename P, typename ... Args>
-    void onValue(P & p, NamedItemTag<Args...> tag) {
-        p = level().template get<P>(ptree::path_type(name(tag), '\0') );
+    template <typename Value, typename ... Args>
+    void onValue(Value & p, NamedItemTag<Args...> tag) {
+        p = level().template get<Value>(ptree::path_type(name(tag), '\0') );
     }
 
-    template <typename P>
-    void onValue(P & p, SequenceItemTag) {
+    template <typename Value>
+    void onValue(Value & p, SequenceItemTag) {
         if( iter() == level().end() ) {
             throw std::runtime_error("Nameless items iterator out of range in PtreeReader");
         }
-        p = iter()->second.template get_value<P>();
+        p = iter()->second.template get_value<Value>();
         ++iter();
     }
 
-    template <typename ... Args>
-    PtreeReader onStructStart(NamedItemTag<Args...> tag) {
+    template <typename Struct, typename ... Args>
+    PtreeReader onStructStart(Struct& , NamedItemTag<Args...> tag) {
         auto retval = *this;
         retval.level( level().get_child(name(tag)) );
         return std::move(retval);
     }
 
-    PtreeReader onStructStart(RootNodeTag) { return *this; }
+    template <typename Struct>
+    PtreeReader onStructStart(Struct& , RootNodeTag) { return *this; }
 
-    PtreeReader onStructStart(SequenceItemTag) {
+    template <typename Struct>
+    PtreeReader onStructStart(Struct& , SequenceItemTag) {
         auto retval = *this;
         retval.level( iter()->second );
         ++iter();
         return std::move(retval);
     }
 
-    void onStructEnd() {}
-
-    template <typename P, typename Tag>
-    PtreeReader onMapStart(P & p, Tag tag) {
-        auto retval = onStructStart(tag);
+    template <typename Map, typename Tag>
+    PtreeReader onMapStart(Map & p, Tag tag) {
+        auto retval = onStructStart(p, tag);
         for( const auto & i : retval.level()) {
             p[i.first];
         }
         return std::move(retval);
     }
 
-    void onMapEnd() { onStructEnd(); }
-
-    template <typename P, typename Tag>
-    PtreeReader onSequenceStart(P & p, Tag tag) {
-        auto retval = onStructStart(tag);
+    template <typename Sequence, typename Tag>
+    PtreeReader onSequenceStart(Sequence & p, Tag tag) {
+        auto retval = onStructStart(p, tag);
         p.resize( retval.level().size() );
         return std::move(retval);
     }
 
-    template <typename P, std::size_t N, typename Tag>
-    PtreeReader onSequenceStart(P (& p)[N], Tag tag) {
-        (void)p;
-        return onStructStart(tag);
+    template <typename Sequence, std::size_t N, typename Tag>
+    PtreeReader onSequenceStart(Sequence (& p)[N], Tag tag) {
+        return onStructStart(p, tag);
     }
-
-    void onSequenceEnd() { onStructEnd(); }
 
     template <typename P, typename Tag>
     typename std::enable_if<!std::is_arithmetic<P>::value, bool>::type
@@ -104,35 +99,35 @@ public:
         return onOptionalIntegral(p, tag);
     }
 
-    template<typename P, typename ... Args>
-    bool onSmartPointer(P& p, NamedItemTag<Args...> tag) {
+    template<typename Pointer, typename ... Args>
+    bool onSmartPointer(Pointer& p, NamedItemTag<Args...> tag) {
         const bool fieldFound = ( level().find( name(tag) ) != level().not_found() );
         if( fieldFound ) {
-            p.reset(new typename P::element_type);
+            p.reset(new typename Pointer::element_type);
         }
         return fieldFound;
     }
 
-    template<typename P>
-    bool onSmartPointer(P& p, RootNodeTag) {
-        p.reset(new typename P::element_type);
+    template<typename Pointer>
+    bool onSmartPointer(Pointer& p, RootNodeTag) {
+        p.reset(new typename Pointer::element_type);
         return true;
     }
 
-    template<typename P>
-    bool onSmartPointer(P& p, SequenceItemTag) {
+    template<typename Pointer>
+    bool onSmartPointer(Pointer& p, SequenceItemTag) {
         const bool fieldFound = !level().empty();
         if( fieldFound ) {
-            p.reset(new typename P::element_type);
+            p.reset(new typename Pointer::element_type);
         }
         return fieldFound;
     }
 
     template<typename Tag>
     void onPtree(ptree& p, Tag tag) {
-        onStructStart(tag);
+        onStructStart(p, tag);
         p = level();
-        onStructEnd();
+        onStructEnd(p, tag);
     }
 
 private:

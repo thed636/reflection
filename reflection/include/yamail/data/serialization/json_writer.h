@@ -101,33 +101,36 @@ public:
         addString(s);
     }
 
-    template<typename P, typename Tag>
-    void onValue(const P& p, Tag tag) {
+    template<typename Value, typename Tag>
+    void onValue(const Value& p, Tag tag) {
         onValue ( boost::lexical_cast<std::string>(p), tag);
     }
 
-    template<typename ... Args>
-    JsonWriter onStructStart(NamedItemTag<Args...> tag) {
+    template<typename Struct, typename ... Args>
+    JsonWriter onStructStart(const Struct& p, NamedItemTag<Args...> tag) {
         addString( name(tag) );
-        return onStructStart(SequenceItemTag{});
+        return onStructStart(p, SequenceItemTag{});
     }
 
-    JsonWriter onStructStart(SequenceItemTag) {
+    template<typename Struct>
+    JsonWriter onStructStart(const Struct&, SequenceItemTag) {
         checkError ( yajl_gen_map_open(gen.get()) );
         return *this;
     }
 
-    void onStructEnd() {
+    template<typename Struct, typename Tag>
+    void onStructEnd(const Struct&, Tag) {
         checkError( yajl_gen_map_close(gen.get()) );
     }
 
     template<typename Map, typename Tag>
-	JsonWriter onMapStart(const Map& , Tag tag) {
-        return onStructStart(tag);
+    JsonWriter onMapStart(const Map& m, Tag tag) {
+        return onStructStart(m, tag);
     }
 
-    void onMapEnd() {
-        onStructEnd();
+    template<typename Map, typename Tag>
+	void onMapEnd(const Map&, Tag) {
+        checkError( yajl_gen_map_close(gen.get()) );
     }
 
     template<typename Seq, typename ... Args>
@@ -136,13 +139,14 @@ public:
         return onSequenceStart(seq, SequenceItemTag());
     }
 
-    template<typename P>
-    JsonWriter onSequenceStart(const P&, SequenceItemTag) {
+    template<typename Seq>
+    JsonWriter onSequenceStart(const Seq&, SequenceItemTag) {
         checkError(yajl_gen_array_open(gen.get()));
         return *this;
     }
 
-    void onSequenceEnd() {
+    template<typename Seq, typename Tag>
+    void onSequenceEnd(const Seq& , Tag) {
         checkError(yajl_gen_array_close(gen.get()));
     }
 
@@ -151,17 +155,17 @@ public:
         if (tree.size() == 0) {
             onValue(tree.data(), tag);
         } else if (tree.front().first.empty()) {
-            onSequenceStart(tree, tag);
+            auto v = onSequenceStart(tree, tag);
             for (const auto& i : tree) {
-                applyVisitor(i.second, *this, SequenceItemTag());
+                applyVisitor(i.second, v, SequenceItemTag());
             }
-            onSequenceEnd();
+            onSequenceEnd(tree, tag);
         } else {
-            onMapStart(tree, tag);
+            auto v = onMapStart(tree, tag);
             for (const auto& i : tree) {
-                applyVisitor(i.second, *this, namedItemTag(i.first));
+                applyVisitor(i.second, v, namedItemTag(i.first));
             }
-            onMapEnd();
+            onMapEnd(tree, tag);
         }
     }
 

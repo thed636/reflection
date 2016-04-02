@@ -118,7 +118,7 @@ struct ApplySequenceVisitor {
     static void apply(T & cont, Visitor & v, Tag tag) {
         auto itemVisitor = v.onSequenceStart(cont, tag);
         boost::for_each(cont, makeApplier(itemVisitor, SequenceItemTag{}));
-        v.onSequenceEnd();
+        v.onSequenceEnd(cont, tag);
     }
 };
 
@@ -140,7 +140,7 @@ struct ApplyTupleVisitor {
     static void apply(T & cont, Visitor & v, Tag tag) {
         auto itemVisitor = v.onSequenceStart(cont, tag);
         boost::fusion::for_each(cont, makeApplier(itemVisitor, SequenceItemTag{}));
-        v.onSequenceEnd();
+        v.onSequenceEnd(cont, tag);
     }
 };
 
@@ -155,7 +155,7 @@ struct ApplyMapVisitor {
     static void apply(T & cont, Visitor & v, Tag tag) {
         auto itemVisitor = v.onMapStart(cont, tag);
         boost::for_each(cont, makeApplier(itemVisitor, MapItemTag{}));
-        v.onMapEnd();
+        v.onMapEnd(cont, tag);
     }
 };
 
@@ -261,9 +261,9 @@ struct ApplyStructVisitor {
 
     template <typename Tag>
     static void apply (T& cvalue, Visitor& v, Tag tag) {
-        auto itemVisitor = v.onStructStart(tag);
+        auto itemVisitor = v.onStructStart(cvalue, tag);
         ApplyStructFirstItemVisitor<T,Visitor>::apply(cvalue, itemVisitor);
-        v.onStructEnd();
+        v.onStructEnd(cvalue, tag);
     }
 };
 
@@ -379,33 +379,36 @@ public:
     using value_type = T;
     using tag = VisitorTag;
 
-    template<typename P, typename Tag>
-    void onValue(P&& , Tag) {};
+    template<typename Value, typename Tag>
+    void onValue(Value&& , Tag) {};
 
-    template<typename Tag>
-    Visitor onStructStart(Tag) { return *this;};
-    void onStructEnd() {};
+    template<typename Struct, typename Tag>
+    Visitor onStructStart(Struct&&, Tag) { return *this;};
+    template<typename Struct, typename Tag>
+    void onStructEnd(Struct&&, Tag) {};
 
-    template<typename P, typename Tag>
-    Visitor onMapStart(P&& , Tag) { return *this;};
-    void onMapEnd() {};
+    template<typename Map, typename Tag>
+    Visitor onMapStart(Map&& , Tag) { return *this;};
+    template<typename Map, typename Tag>
+    void onMapEnd(Map&& , Tag) {};
 
-    template<typename P, typename Tag>
-    Visitor onSequenceStart(P&& , Tag) { return *this;};
-    void onSequenceEnd() {};
+    template<typename Sequence, typename Tag>
+    Visitor onSequenceStart(Sequence&& , Tag) { return *this;};
+    template<typename Sequence, typename Tag>
+    void onSequenceEnd(Sequence&& , Tag) {};
 
-    template<typename P, typename Tag>
-    bool onOptional(P&& p, Tag) {
+    template<typename Optional, typename Tag>
+    bool onOptional(Optional&& p, Tag) {
         return p.is_initialized();
     }
 
-    template<typename P, typename Tag>
-    bool onSmartPointer(P&& p, Tag) {
+    template<typename Pointer, typename Tag>
+    bool onSmartPointer(Pointer&& p, Tag) {
         return p.get();
     }
 
-    template <typename P, typename Tag>
-    void onPtree(P&&, Tag) {}
+    template <typename Ptree, typename Tag>
+    void onPtree(Ptree&&, Tag) {}
 };
 
 template<typename T>
