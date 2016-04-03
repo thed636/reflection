@@ -10,8 +10,7 @@ namespace yamail { namespace data { namespace deserialization {
 using namespace yamail::data::reflection;
 namespace json {
 
-template<typename T>
-class Reader : public DeserializeVisitor<T> {};
+class Reader : public DeserializeVisitor {};
 
 } // namespace json
 

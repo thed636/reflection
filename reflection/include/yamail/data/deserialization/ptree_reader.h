@@ -15,12 +15,12 @@ namespace property_tree {
 
 struct RootNodeTag {};
 
-template<typename T>
-class Reader : public DeserializeVisitor<T> {
+class Reader : public DeserializeVisitor {
 public:
     explicit Reader ( ptree& pt ) : level_ (&pt), iter_(level().begin()) {
     }
 
+    template <typename T>
     void apply(T& res) {
         applyVisitor( res, *this, RootNodeTag() );
     }
@@ -173,7 +173,7 @@ private:
 
 template <typename T>
 inline void fromPtree(ptree& p, T& v) {
-    property_tree::Reader<T>(p).apply(v);
+    property_tree::Reader(p).apply(v);
 }
 
 template <typename T>

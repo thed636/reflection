@@ -52,18 +52,19 @@ public:
     bool operator !() const noexcept { return buf == nullptr; }
 };
 
-template<typename T>
-class Writer : public SerializeVisitor<T> {
+class Writer : public SerializeVisitor {
 public:
     explicit Writer (Handle gen) : gen(gen) {
     }
 
+    template<typename T>
     void apply(const T& value, const std::string& rootName) {
         checkError ( yajl_gen_map_open(gen.get()) );
         applyVisitor(value, *this, rootName);
         checkError ( yajl_gen_map_close(gen.get()) );
     }
 
+    template<typename T>
     void apply(const T & value) {
         applyVisitor(value, *this, SequenceItemTag());
     }
@@ -211,14 +212,14 @@ private:
 template <typename T>
 inline yajl::Buffer toJson(const T& v) {
     auto h = yajl::createGenerator();
-    yajl::Writer<T>(h).apply(v);
+    yajl::Writer(h).apply(v);
     return yajl::Buffer(h);
 }
 
 template <typename T>
 inline yajl::Buffer toJson(const T& v, const std::string& rootName) {
     auto h = yajl::createGenerator();
-    yajl::Writer<T>(h).apply(v, rootName);
+    yajl::Writer(h).apply(v, rootName);
     return yajl::Buffer(h);
 }
 

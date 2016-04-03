@@ -14,12 +14,12 @@ namespace property_tree {
 
 struct RootNodeTag {};
 
-template<typename T>
-class Writer : public SerializeVisitor<T> {
+class Writer : public SerializeVisitor {
 public:
     explicit Writer (ptree & root) : level_(&root) {
     }
 
+    template<typename T>
     void apply(const T & value) {
         applyVisitor(value, *this, RootNodeTag());
     }
@@ -74,7 +74,7 @@ private:
 
 template <typename T>
 ptree & toPtree(ptree& p, const T& v) {
-    property_tree::Writer<T>(p).apply(v);
+    property_tree::Writer(p).apply(v);
     return p;
 }
 

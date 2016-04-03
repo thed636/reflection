@@ -373,17 +373,16 @@ struct SelectType {
 template <typename T, typename Visitor>
 struct ApplyVisitor : SelectType < T, Visitor >::type {};
 
-template<typename T, typename VisitorTag>
+template<typename VisitorTag>
 class Visitor {
 public:
-    using value_type = T;
     using tag = VisitorTag;
 
     template<typename Value, typename Tag>
-    void onValue(Value&& , Tag) {};
+    void onValue(Value&& , Tag) {}
 
     template<typename Struct, typename Tag>
-    Visitor onStructStart(Struct&&, Tag) { return *this;};
+    Visitor onStructStart(Struct&&, Tag) { return *this;}
     template<typename Struct, typename Tag>
     void onStructEnd(Struct&&, Tag) {};
 
@@ -393,29 +392,23 @@ public:
     void onMapEnd(Map&& , Tag) {};
 
     template<typename Sequence, typename Tag>
-    Visitor onSequenceStart(Sequence&& , Tag) { return *this;};
+    Visitor onSequenceStart(Sequence&& , Tag) { return *this;}
     template<typename Sequence, typename Tag>
-    void onSequenceEnd(Sequence&& , Tag) {};
+    void onSequenceEnd(Sequence&& , Tag) {}
 
     template<typename Optional, typename Tag>
-    bool onOptional(Optional&& p, Tag) {
-        return p.is_initialized();
-    }
+    bool onOptional(Optional&& p, Tag) { return p.is_initialized(); }
 
     template<typename Pointer, typename Tag>
-    bool onSmartPointer(Pointer&& p, Tag) {
-        return p.get();
-    }
+    bool onSmartPointer(Pointer&& p, Tag) { return p.get(); }
 
     template <typename Ptree, typename Tag>
     void onPtree(Ptree&&, Tag) {}
 };
 
-template<typename T>
-using SerializeVisitor = Visitor<const T, SerializeVisitorTag>;
+using SerializeVisitor = Visitor<SerializeVisitorTag>;
 
-template<typename T>
-using DeserializeVisitor = Visitor<T, DeserializeVisitorTag>;
+using DeserializeVisitor = Visitor<DeserializeVisitorTag>;
 
 }}}
 
