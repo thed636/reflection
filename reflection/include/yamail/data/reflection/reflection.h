@@ -66,16 +66,42 @@ struct SequenceItemTag {};
 
 template <typename Name>
 struct NamedItemTag {
-    const Name & name;
+    using name = Name;
+};
+
+template <>
+struct NamedItemTag<std::string> {
+    const std::string& name;
+};
+
+template <>
+struct NamedItemTag<const char*> {
+    const char* name;
 };
 
 template <typename Name>
-inline NamedItemTag<Name> namedItemTag(const Name& name) {
-    return NamedItemTag<Name>{name};
+inline NamedItemTag<Name> namedItemTag(Name) {
+    return NamedItemTag<Name>{};
+}
+
+inline NamedItemTag<std::string> namedItemTag(const std::string& name) {
+    return NamedItemTag<std::string>{name};
+}
+
+inline NamedItemTag<const char*> namedItemTag(const char* name) {
+    return NamedItemTag<const char*>{name};
 }
 
 template <typename ... Args>
-inline auto name(const NamedItemTag<Args...>& tag) -> decltype(tag.name) {
+inline auto name(const NamedItemTag<Args...>& ) -> decltype(NamedItemTag<Args...>::name::call()) {
+    return NamedItemTag<Args...>::name::call();
+}
+
+inline auto name(const NamedItemTag<std::string>& tag) -> decltype(tag.name) {
+    return tag.name;
+}
+
+inline auto name(const NamedItemTag<const char*>& tag) -> decltype(tag.name) {
     return tag.name;
 }
 
@@ -201,7 +227,9 @@ struct attribute {
     using type = attribute;
     using tag = AttributeTag;
 
-    static auto call () -> decltype(struct_member_name::call()) { return struct_member_name::call(); }
+    static auto call () -> decltype(struct_member_name::call()) {
+        return struct_member_name::call();
+    }
 };
 
 template <typename T, typename N>
@@ -245,39 +273,31 @@ struct names <T, typename boost::fusion::result_of::size<T>::type > {
 template <typename T>
 struct vector: names < T, boost::mpl::int_< 0 > > {};
 
-} // namespce member_name
+} // namespace member_name
 
 namespace visit_struct {
-
-template <typename Arg>
-using Name = typename std::decay<
-        typename boost::fusion::result_of::value_at_c<
-        typename std::decay<Arg>::type, 0>::type>::type;
-
-template <typename Arg>
-auto name(Arg&&) -> decltype(Name<Arg>::call()) { return Name<Arg>::call(); }
 
 template <typename Visitor, typename Tag = typename Visitor::tag>
 struct ApplyMethodVisitor;
 
 template <typename Visitor>
 struct ApplyMethodVisitor<Visitor, SerializeVisitorTag> {
-    template <typename Arg>
-    static void call (Arg&& arg,  Visitor & v) {
-        const typename boost::fusion::result_of::value_at_c<Arg, 1>::type::type res =
-                boost::fusion::at_c<1>(std::forward<Arg>(arg));
-        applyVisitor( res.second, v, namedItemTag(name(arg)) );
+    template <typename View, typename Tag>
+    static void call (View arg,  Visitor & v, Tag tag) {
+        const typename boost::fusion::result_of::value_at_c<typename std::decay<View>::type, 1>::type::type res =
+                boost::fusion::at_c<1>(arg);
+        applyVisitor(res.second, v, tag);
     }
 };
 
 template <typename Visitor>
 struct ApplyMethodVisitor<Visitor, DeserializeVisitorTag> {
-    template <typename Arg>
-    static void call (Arg&& arg,  Visitor & v) {
-        using Proxy = typename boost::fusion::result_of::value_at_c<Arg, 1>::type;
-        Proxy proxy = boost::fusion::at_c<1>(std::forward<Arg>(arg));
+    template <typename View, typename Tag>
+    static void call (View arg,  Visitor & v, Tag tag) {
+        using Proxy = typename boost::fusion::result_of::value_at_c<typename std::decay<View>::type, 1>::type;
+        Proxy proxy = boost::fusion::at_c<1>(arg);
         typename Proxy::type buf = proxy;
-        applyVisitor( buf.second, v, namedItemTag(name(arg)) );
+        applyVisitor(buf.second, v, tag);
         proxy = buf;
     }
 };
@@ -297,26 +317,32 @@ struct is_method <boost::fusion::vector<Name, Value>>:
     std::is_same<typename std::decay<Name>::type::tag, MethodTag> {};
 
 template <typename Visitor>
-struct VisitorApplier {
+struct Adaptor {
     Visitor & v;
-    template <typename Arg>
-    typename std::enable_if<is_attribute<typename std::decay<Arg>::type>::value>::type
-    operator()(Arg&& arg) const {
-        applyVisitor(boost::fusion::at_c<1>(std::forward<Arg>(arg)),
-                v, namedItemTag(name(arg)) );
+
+    template <typename View>
+    using Name = typename std::decay<
+            typename boost::fusion::result_of::value_at_c<
+            typename std::decay<View>::type, 0>::type>::type;
+
+    template <typename View>
+    static NamedItemTag<Name<View>> tag(View) {return NamedItemTag<Name<View>>{};}
+
+    template <typename View>
+    typename std::enable_if<is_attribute<typename std::decay<View>::type>::value>::type
+    operator()(View view) const {
+        applyVisitor(boost::fusion::at_c<1>(view), v, tag(view));
     }
 
-    template <typename Arg>
-    typename std::enable_if<is_method<typename std::decay<Arg>::type>::value>::type
-    operator()(Arg&& arg) const {
-        ApplyMethodVisitor<Visitor>::call(std::forward<Arg>(arg), v);
+    template <typename View>
+    typename std::enable_if<is_method<typename std::decay<View>::type>::value>::type
+    operator()(View view) const {
+        ApplyMethodVisitor<Visitor>::call(view, v, tag(view));
     }
 };
 
 template <typename Visitor>
-inline VisitorApplier<Visitor> adapt(Visitor& v) {
-    return VisitorApplier<Visitor>{v};
-}
+inline Adaptor<Visitor> adapt(Visitor& v) { return Adaptor<Visitor>{v}; }
 
 } // namespace visit_struct
 
@@ -327,8 +353,8 @@ struct ApplyStructVisitor {
     template <typename Tag>
     static void apply (T& value, Visitor& v, Tag tag) {
         const auto names = member_name::vector<T>::call();
-        using Item = boost::fusion::vector<decltype(names)&, decltype(value)&>;
-        auto members = boost::fusion::zip_view<Item>({names, value});
+        using View = boost::fusion::vector<decltype(names)&, decltype(value)&>;
+        auto members = boost::fusion::zip_view<View>({names, value});
         auto itemVisitor = v.onStructStart(value, tag);
         boost::fusion::for_each(members, visit_struct::adapt(itemVisitor));
         v.onStructEnd(value, tag);
