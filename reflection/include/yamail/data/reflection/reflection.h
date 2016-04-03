@@ -16,6 +16,8 @@
 #include <boost/fusion/include/for_each.hpp>
 #include <boost/fusion/support/is_sequence.hpp>
 #include <boost/fusion/include/is_sequence.hpp>
+#include <boost/fusion/algorithm/transformation/zip.hpp>
+#include <boost/fusion/container/generation/make_vector.hpp>
 
 #include <boost/fusion/mpl.hpp>
 #include <boost/fusion/adapted.hpp>
@@ -159,19 +161,6 @@ struct ApplyMapVisitor {
     }
 };
 
-template <typename T, typename Visitor, typename N>
-struct ApplyMemberVisitor {
-
-    typedef ApplyMemberVisitor<T,Visitor,N> type;
-
-    typedef typename boost::fusion::extension::struct_member_name <
-            typename boost::remove_const<T>::type , N::value> member_name;
-
-    static void apply (T & cvalue, Visitor & v) {
-        applyVisitor(boost::fusion::at<N>(cvalue), v, namedItemTag(member_name::call()) );
-    }
-};
-
 // Deprecated
 inline std::string stripMethodName(std::string name) {
     size_t namespacesEndPos = name.find_last_of(':');
@@ -197,73 +186,152 @@ inline std::string stripMethodName(std::string name) {
 // Deprecated
 #define YR_CALL_SET_WITH_NAME(fun) YR_SET_WITH_NAME(fun)
 
-template <typename T, typename Visitor, typename N, typename Tag = typename Visitor::tag>
-struct ApplyMethodVisitor;
-
-template <typename T, typename Visitor, typename N>
-struct ApplyMethodVisitor<T, Visitor, N, SerializeVisitorTag> {
-
-    typedef ApplyMethodVisitor<T,Visitor,N> type;
-
-    typedef const typename boost::fusion::result_of::value_at <T, N>::type current;
-
-    static void apply (const T & cvalue,  Visitor & v) {
-        current val = boost::fusion::at<N>(cvalue);
-        applyVisitor( val.second, v, namedItemTag(val.first) );
-    }
-};
-
-template <typename T, typename Visitor, typename N>
-struct ApplyMethodVisitor<T, Visitor, N, DeserializeVisitorTag> {
-
-    typedef ApplyMethodVisitor<T,Visitor,N> type;
-
-    typedef typename boost::fusion::result_of::value_at <T, N>::type current;
-
-    static void apply (T & cvalue, Visitor & v) {
-        current buf = boost::fusion::at<N>(cvalue);
-        applyVisitor( buf.second, v, namedItemTag(buf.first) );
-        boost::fusion::at<N>(cvalue) = std::move(buf);
-    }
-};
-
 BOOST_MPL_HAS_XXX_TRAIT_DEF(type)
 
-template <typename T, typename Visitor, typename N>
-struct ApplyStructItemVisitor {
+struct AttributeTag;
+struct MethodTag;
+
+namespace member_name {
+
+template <typename T, typename N>
+struct attribute {
+    typedef typename boost::fusion::extension::struct_member_name <
+            typename boost::remove_const<T>::type , N::value> struct_member_name;
+
+    using type = attribute;
+    using tag = AttributeTag;
+
+    static auto call () -> decltype(struct_member_name::call()) { return struct_member_name::call(); }
+};
+
+template <typename T, typename N>
+struct method {
+    using type = method;
+    using tag = MethodTag;
+
+    using result_type = typename boost::fusion::result_of::value_at <T, N>::type;
+
+    static typename result_type::first_type call () {
+        return result_type(boost::fusion::at<N>(T())).first;
+    }
+};
+
+template <typename T, typename N>
+struct names {
 
     typedef typename boost::mpl::next<N>::type next;
 
     typedef typename boost::fusion::extension::struct_member_name <
-            typename boost::remove_const<T>::type, N::value> member;
+            typename boost::remove_const<T>::type, N::value> item;
 
-    typedef typename boost::mpl::eval_if< has_type<member>, ApplyMemberVisitor<T,Visitor,N>,
-            ApplyMethodVisitor<T,Visitor,N> >::type item;
+    typedef typename boost::mpl::eval_if< has_type<item>, attribute<T,N>,
+            method<T,N> >::type name;
 
-    static void apply (T& cvalue,  Visitor& v) {
-        item::apply(cvalue, v);
-        ApplyStructItemVisitor<T, Visitor, next>::apply(cvalue, v);
+    template <typename ... Args>
+    static auto call (Args&& ... args) ->
+    decltype(names<T, next>::call(std::forward<Args>(args)..., name())) {
+        return names<T, next>::call(std::forward<Args>(args)..., name());
     }
 };
 
-template <typename T, typename Visitor>
-struct ApplyStructItemVisitor<T, Visitor, typename boost::fusion::result_of::size<T>::type > {
-    static void apply ( T& , Visitor&) {
+template <typename T>
+struct names <T, typename boost::fusion::result_of::size<T>::type > {
+    template <typename ... Args>
+    static boost::fusion::vector<Args...> call (Args&& ... args) {
+        return boost::fusion::make_vector(std::forward<Args>(args)...);
     }
 };
 
-template <typename T, typename Visitor>
-struct ApplyStructFirstItemVisitor: ApplyStructItemVisitor< T, Visitor, boost::mpl::int_< 0 > > {};
+template <typename T>
+struct vector: names < T, boost::mpl::int_< 0 > > {};
+
+} // namespce member_name
+
+namespace visit_struct {
+
+template <typename Arg>
+using Name = typename std::decay<
+        typename boost::fusion::result_of::value_at_c<
+        typename std::decay<Arg>::type, 0>::type>::type;
+
+template <typename Arg>
+auto name(Arg&&) -> decltype(Name<Arg>::call()) { return Name<Arg>::call(); }
+
+template <typename Visitor, typename Tag = typename Visitor::tag>
+struct ApplyMethodVisitor;
+
+template <typename Visitor>
+struct ApplyMethodVisitor<Visitor, SerializeVisitorTag> {
+    template <typename Arg>
+    static void call (Arg&& arg,  Visitor & v) {
+        const typename boost::fusion::result_of::value_at_c<Arg, 1>::type::type res =
+                boost::fusion::at_c<1>(std::forward<Arg>(arg));
+        applyVisitor( res.second, v, namedItemTag(name(arg)) );
+    }
+};
+
+template <typename Visitor>
+struct ApplyMethodVisitor<Visitor, DeserializeVisitorTag> {
+    template <typename Arg>
+    static void call (Arg&& arg,  Visitor & v) {
+        using Proxy = typename boost::fusion::result_of::value_at_c<Arg, 1>::type;
+        Proxy proxy = boost::fusion::at_c<1>(std::forward<Arg>(arg));
+        typename Proxy::type buf = proxy;
+        applyVisitor( buf.second, v, namedItemTag(name(arg)) );
+        proxy = buf;
+    }
+};
+
+template <typename T>
+struct is_attribute : boost::mpl::false_ {};
+
+template <typename Name, typename Value>
+struct is_attribute <boost::fusion::vector<Name, Value>>:
+    std::is_same<typename std::decay<Name>::type::tag, AttributeTag> {};
+
+template <typename T>
+struct is_method : boost::mpl::false_ {};
+
+template <typename Name, typename Value>
+struct is_method <boost::fusion::vector<Name, Value>>:
+    std::is_same<typename std::decay<Name>::type::tag, MethodTag> {};
+
+template <typename Visitor>
+struct VisitorApplier {
+    Visitor & v;
+    template <typename Arg>
+    typename std::enable_if<is_attribute<typename std::decay<Arg>::type>::value>::type
+    operator()(Arg&& arg) const {
+        applyVisitor(boost::fusion::at_c<1>(std::forward<Arg>(arg)),
+                v, namedItemTag(name(arg)) );
+    }
+
+    template <typename Arg>
+    typename std::enable_if<is_method<typename std::decay<Arg>::type>::value>::type
+    operator()(Arg&& arg) const {
+        ApplyMethodVisitor<Visitor>::call(std::forward<Arg>(arg), v);
+    }
+};
+
+template <typename Visitor>
+inline VisitorApplier<Visitor> adapt(Visitor& v) {
+    return VisitorApplier<Visitor>{v};
+}
+
+} // namespace visit_struct
 
 template <typename T, typename Visitor>
 struct ApplyStructVisitor {
     typedef ApplyStructVisitor<T, Visitor> type;
 
     template <typename Tag>
-    static void apply (T& cvalue, Visitor& v, Tag tag) {
-        auto itemVisitor = v.onStructStart(cvalue, tag);
-        ApplyStructFirstItemVisitor<T,Visitor>::apply(cvalue, itemVisitor);
-        v.onStructEnd(cvalue, tag);
+    static void apply (T& value, Visitor& v, Tag tag) {
+        const auto names = member_name::vector<T>::call();
+        using Item = boost::fusion::vector<decltype(names)&, decltype(value)&>;
+        auto members = boost::fusion::zip_view<Item>({names, value});
+        auto itemVisitor = v.onStructStart(value, tag);
+        boost::fusion::for_each(members, visit_struct::adapt(itemVisitor));
+        v.onStructEnd(value, tag);
     }
 };
 
