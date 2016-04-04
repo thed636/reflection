@@ -14,7 +14,7 @@ namespace property_tree {
 
 struct RootNodeTag {};
 
-class Writer : public SerializeVisitor {
+class Writer : public Visitor {
 public:
     explicit Writer (ptree & root) : level_(&root) {
     }

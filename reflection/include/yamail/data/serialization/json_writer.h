@@ -52,7 +52,7 @@ public:
     bool operator !() const noexcept { return buf == nullptr; }
 };
 
-class Writer : public SerializeVisitor {
+class Writer : public Visitor {
 public:
     explicit Writer (Handle gen) : gen(gen) {
     }

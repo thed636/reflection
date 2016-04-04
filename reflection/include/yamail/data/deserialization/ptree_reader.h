@@ -15,7 +15,7 @@ namespace property_tree {
 
 struct RootNodeTag {};
 
-class Reader : public DeserializeVisitor {
+class Reader : public Visitor {
 public:
     explicit Reader ( ptree& pt ) : level_ (&pt), iter_(level().begin()) {
     }
