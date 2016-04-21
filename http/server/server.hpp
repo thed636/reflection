@@ -63,6 +63,16 @@ private:
     RequestHandler request_handler_;
 };
 
+template<typename RH>
+using server_ptr = std::unique_ptr< server<RH> >;
+
+template<typename RH>
+server_ptr<RH> make_server(const std::string& address, const std::string& port, RH request_handler) {
+    return server_ptr<RH>(
+            new server<RH>(address, port, std::move(request_handler))
+    );
+}
+
 } // namespace server
 } // namespace http
 

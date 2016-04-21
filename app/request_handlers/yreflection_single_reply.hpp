@@ -17,20 +17,20 @@
 #include <http/server/request.hpp>
 
 #include <model/data/mailbox.h>
-#include <model/reflection/message.h>
 #include <yamail/data/serialization/json_writer.h>
 
 namespace http {
 namespace server {
 
 /// The common handler for all incoming requests.
+template<typename Serializer>
 class request_handler {
 public:
     request_handler(const request_handler&) = delete;
     request_handler& operator=(const request_handler&) = delete;
 
     /// Construct with a directory containing files to be served.
-    request_handler();
+    request_handler(Serializer s);
     request_handler(request_handler&& other);
 
     /// Handle a request and produce a reply.
@@ -42,13 +42,16 @@ private:
     /// The directory containing the files to be served.
     using Mailbox = model::Mailbox<model::DummyImpl>;
     Mailbox mailbox;
+    Serializer serializer;
 
     template<typename OnReply>
     struct reply_collector {
         OnReply handler;
+        Serializer serializer;
         model::Messages messages;
 
-        reply_collector(OnReply h) : handler(std::move(h)) {}
+        reply_collector(OnReply h, Serializer s)
+            : handler(std::move(h)), serializer(std::move(s)) {}
 
         template<typename Continuation>
         void operator()(
@@ -59,7 +62,7 @@ private:
                 handler(reply::stock_reply(reply::internal_server_error));
             } else if (!m) {
                 reply rep;
-                rep.content = serialize(std::move(messages));
+                rep.content = serializer(std::move(messages));
                 fill_ok_reply(rep);
                 handler(rep);
             } else {
@@ -69,14 +72,20 @@ private:
         }
     };
 
+    template<typename OnReply>
+    reply_collector<OnReply> make_reply_collector(OnReply&& h, Serializer s) {
+        return reply_collector<OnReply>( std::forward<OnReply>(h),std::move(s));
+    }
+
     /// Perform URL-decoding on a string. Returns false if the encoding was
     /// invalid.
     static bool url_decode(const std::string& in, std::string& out);
     static void fill_ok_reply(reply& rep);
 };
 
+template<typename S>
 template<typename OnReply>
-void request_handler::handle_request(const request& req, OnReply handler) {
+void request_handler<S>::handle_request(const request& req, OnReply handler) {
     // Decode url to path.
     std::string request_path;
     if (!url_decode(req.uri, request_path)) {
@@ -93,13 +102,20 @@ void request_handler::handle_request(const request& req, OnReply handler) {
 
     //Dispatch request
     if (request_path == "/messages") {
-        auto messages = std::make_shared<model::Messages>();
-        mailbox.getMessages(reply_collector<OnReply>(std::move(handler)));
+        mailbox.getMessages(make_reply_collector(std::move(handler), serializer));
+    } else {
+        handler(reply::stock_reply(reply::not_found));
     }
 }
 
+template <typename S>
+request_handler<S> make_request_handler(S serializer) {
+    return request_handler<S>(std::move(serializer));
+}
 
 } // namespace server
 } // namespace http
+
+#include "yreflection_single_reply.ipp"
 
 #endif // APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_HPP

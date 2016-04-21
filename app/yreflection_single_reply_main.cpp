@@ -10,11 +10,12 @@
 
 #include <iostream>
 #include <string>
-#include <boost/asio.hpp>
 
 #include <app/request_handlers/yreflection_single_reply.hpp>
 
 #include <http/server/server.hpp>
+
+#include <model/reflection/message.h>
 
 using namespace http::server;
 
@@ -31,10 +32,16 @@ int main(int argc, char* argv[]) {
         }
 
         // Initialize the server.
-        server<request_handler> s(argv[1], argv[2], request_handler());
+        auto s = make_server(
+                argv[1],
+                argv[2],
+                make_request_handler([](const model::Messages& m){
+                    return serialize(m).str();
+                })
+        );
 
         // Run the server until stopped.
-        s.run();
+        s->run();
     } catch (const std::exception& e) {
         std::cerr << "exception: " << e.what() << "\n";
     }

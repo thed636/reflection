@@ -1,30 +1,23 @@
-//
-// request_handler.cpp
-// ~~~~~~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
+#ifndef APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_IPP
+#define APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_IPP
 
-#include "yreflection_single_reply.hpp"
 #include <sstream>
-#include <string>
 
 namespace http {
 namespace server {
 
-request_handler::request_handler() :
-        mailbox(model::dummyMailbox()) {
+template <typename S>
+request_handler<S>::request_handler(S s) :
+        mailbox(model::dummyMailbox()), serializer(std::move(s)) {
 }
 
-request_handler::request_handler(request_handler&& other) :
-        mailbox(std::move(other.mailbox)) {
+template <typename S>
+request_handler<S>::request_handler(request_handler&& other) :
+        mailbox(std::move(other.mailbox)), serializer(std::move(other.serializer)) {
 }
 
-
-bool request_handler::url_decode(const std::string& in, std::string& out) {
+template <typename S>
+bool request_handler<S>::url_decode(const std::string& in, std::string& out) {
     out.clear();
     out.reserve(in.size());
     for (std::size_t i = 0; i < in.size(); ++i) {
@@ -50,7 +43,8 @@ bool request_handler::url_decode(const std::string& in, std::string& out) {
     return true;
 }
 
-void request_handler::fill_ok_reply(reply& rep) {
+template <typename S>
+void request_handler<S>::fill_ok_reply(reply& rep) {
     rep.status = reply::ok;
     rep.headers.resize(2);
     rep.headers[0].name = "Content-Length";
@@ -61,3 +55,5 @@ void request_handler::fill_ok_reply(reply& rep) {
 
 } // namespace server
 } // namespace http
+
+#endif // APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_IPP
