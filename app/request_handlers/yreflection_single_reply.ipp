@@ -16,6 +16,32 @@ request_handler<S>::request_handler(request_handler&& other) :
         mailbox(std::move(other.mailbox)), serializer(std::move(other.serializer)) {
 }
 
+
+template<typename S>
+template<typename OnReply>
+void request_handler<S>::handle_request(const request& req, OnReply handler) {
+    // Decode url to path.
+    std::string request_path;
+    if (!url_decode(req.uri, request_path)) {
+        handler(reply::stock_reply(reply::bad_request));
+        return;
+    }
+
+    // Request path must be absolute and not contain "..".
+    if (request_path.empty() || request_path[0] != '/'
+            || request_path.find("..") != std::string::npos) {
+        handler(reply::stock_reply(reply::bad_request));
+        return;
+    }
+
+    //Dispatch request
+    if (request_path == "/messages") {
+        mailbox.getMessages(make_reply_collector(std::move(handler), serializer));
+    } else {
+        handler(reply::stock_reply(reply::not_found));
+    }
+}
+
 template <typename S>
 bool request_handler<S>::url_decode(const std::string& in, std::string& out) {
     out.clear();

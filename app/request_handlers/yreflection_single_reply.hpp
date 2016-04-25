@@ -83,31 +83,6 @@ private:
     static void fill_ok_reply(reply& rep);
 };
 
-template<typename S>
-template<typename OnReply>
-void request_handler<S>::handle_request(const request& req, OnReply handler) {
-    // Decode url to path.
-    std::string request_path;
-    if (!url_decode(req.uri, request_path)) {
-        handler(reply::stock_reply(reply::bad_request));
-        return;
-    }
-
-    // Request path must be absolute and not contain "..".
-    if (request_path.empty() || request_path[0] != '/'
-            || request_path.find("..") != std::string::npos) {
-        handler(reply::stock_reply(reply::bad_request));
-        return;
-    }
-
-    //Dispatch request
-    if (request_path == "/messages") {
-        mailbox.getMessages(make_reply_collector(std::move(handler), serializer));
-    } else {
-        handler(reply::stock_reply(reply::not_found));
-    }
-}
-
 template <typename S>
 request_handler<S> make_request_handler(S serializer) {
     return request_handler<S>(std::move(serializer));
