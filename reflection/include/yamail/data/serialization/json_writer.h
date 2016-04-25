@@ -57,8 +57,8 @@ public:
     explicit Writer (Handle gen) : gen(gen) {
     }
 
-    template<typename T>
-    void apply(const T& value, const std::string& rootName) {
+    template<typename T, typename Tag>
+    void apply(const T& value, Tag rootName) {
         checkError ( yajl_gen_map_open(gen.get()) );
         applyVisitor(value, *this, rootName);
         checkError ( yajl_gen_map_close(gen.get()) );
@@ -219,7 +219,7 @@ inline yajl::Buffer toJson(const T& v) {
 template <typename T>
 inline yajl::Buffer toJson(const T& v, const std::string& rootName) {
     auto h = yajl::createGenerator();
-    yajl::Writer(h).apply(v, rootName);
+    yajl::Writer(h).apply(v, namedItemTag(rootName));
     return yajl::Buffer(h);
 }
 
