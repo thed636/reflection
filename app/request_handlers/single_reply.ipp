@@ -1,5 +1,5 @@
-#ifndef APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_IPP
-#define APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_IPP
+#ifndef APP_REQUEST_HANDLERS_SINGLE_REPLY_IPP
+#define APP_REQUEST_HANDLERS_SINGLE_REPLY_IPP
 
 #include <sstream>
 
@@ -82,4 +82,4 @@ void request_handler<S>::fill_ok_reply(reply& rep) {
 } // namespace server
 } // namespace http
 
-#endif // APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_IPP
+#endif // APP_REQUEST_HANDLERS_SINGLE_REPLY_IPP

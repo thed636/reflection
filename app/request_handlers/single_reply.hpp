@@ -1,15 +1,5 @@
-//
-// request_handler.hpp
-// ~~~~~~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
-#ifndef APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_HPP
-#define APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_HPP
+#ifndef APP_REQUEST_HANDLERS_SINGLE_REPLY_HPP
+#define APP_REQUEST_HANDLERS_SINGLE_REPLY_HPP
 
 #include <string>
 
@@ -91,6 +81,6 @@ request_handler<S> make_request_handler(S serializer) {
 } // namespace server
 } // namespace http
 
-#include "yreflection_single_reply.ipp"
+#include "single_reply.ipp"
 
-#endif // APP_REQUEST_HANDLERS_YREFLECTION_SINGLE_REPLY_HPP
+#endif // APP_REQUEST_HANDLERS_SINGLE_REPLY_HPP
