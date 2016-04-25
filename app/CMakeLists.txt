@@ -10,3 +10,13 @@ target_link_libraries(yreflection_single_reply
   ${yajl_LIBRARIES}
   server
 )
+
+set(handwritten_single_reply_SRC
+  "handwritten_single_reply_main.cpp"
+)
+
+add_executable(handwritten_single_reply ${handwritten_single_reply_SRC})
+target_link_libraries(handwritten_single_reply
+  ${Boost_LIBRARIES}
+  server
+)
