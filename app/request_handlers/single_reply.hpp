@@ -7,7 +7,6 @@
 #include <http/server/request.hpp>
 
 #include <model/data/mailbox.h>
-#include <yamail/data/serialization/json_writer.h>
 
 namespace http {
 namespace server {

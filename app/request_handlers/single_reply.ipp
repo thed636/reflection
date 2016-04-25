@@ -1,8 +1,6 @@
 #ifndef APP_REQUEST_HANDLERS_SINGLE_REPLY_IPP
 #define APP_REQUEST_HANDLERS_SINGLE_REPLY_IPP
 
-#include <sstream>
-
 namespace http {
 namespace server {
 
