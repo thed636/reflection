@@ -26,6 +26,7 @@ find_package(Boost REQUIRED COMPONENTS
   thread
   coroutine
   context
+  chrono
 )
 
 find_library(yajl_LIBRARIES yajl)
