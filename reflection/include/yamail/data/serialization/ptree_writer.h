@@ -82,7 +82,7 @@ template <typename T>
 ptree toPtree(const T& v) {
     ptree p;
     toPtree(p, v);
-    return std::move(p);
+    return p;
 }
 
 }}}

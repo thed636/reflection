@@ -220,10 +220,9 @@ struct attribute {
 template <typename T, typename N>
 struct method {
     using type = method;
-    using result_type = typename boost::fusion::result_of::value_at <T, N>::type;
 
-    static typename result_type::first_type call () {
-        return result_type(boost::fusion::at<N>(T())).first;
+    static auto call() -> decltype(boost::fusion::at<N>(T()).get().first) {
+        return boost::fusion::at<N>(T()).get().first;
     }
 };
 
