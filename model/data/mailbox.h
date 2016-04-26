@@ -8,6 +8,13 @@
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/yield.hpp>
 
+#include <deque>
+#include <boost/thread/mutex.hpp>
+#include <boost/function.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <boost/bind.hpp>
+
 namespace model {
 
 using boost::system::error_code;
@@ -115,6 +122,104 @@ public:
 
 inline Mailbox<DummyImpl> dummyMailbox() {
 	return Mailbox<DummyImpl>(DummyImpl());
+}
+
+template <typename Impl>
+class DelayDecorator {
+public:
+    using timer = boost::asio::steady_timer;
+    using time_duration = timer::duration;
+    using time_point = timer::time_point;
+
+    DelayDecorator(Impl impl, boost::asio::io_service& ios, time_duration timeout)
+    : impl(std::move(impl)), queue_(ios, timeout){}
+
+    template <typename OnMessage>
+    void getMessages(OnMessage h) const {
+        queue_.push([this, h = std::move(h)](){ impl.getMessages(h); });
+    }
+
+    template <typename OnMessage>
+    void getMessages(const Message::Id& id, OnMessage h) const {
+        queue_.push([this, h = std::move(h), &id](){ impl.getMessages(id, h); });
+    }
+
+    template <typename OnMessage>
+    void getMessages(const Recipient& r, OnMessage h) const {
+        queue_.push([this, h = std::move(h), &r](){ impl.getMessages(r, h); });
+    }
+private:
+    Impl impl;
+
+    class Queue {
+    public:
+        struct Request {
+            typedef boost::function<void ()> handler_t;
+
+            Request(handler_t handler, time_duration t) :
+                handler_(handler),
+                expiry_time_(std::chrono::steady_clock::now() + t)
+            {}
+
+            handler_t handler_;
+            time_point expiry_time_;
+        };
+
+        Queue(boost::asio::io_service& ios, time_duration timeout) :
+            timer_(ios), timeout_(timeout) {
+            timer_.expires_at(time_point::max());
+        }
+
+        template <typename H>
+        void push(H handler) {
+            boost::mutex::scoped_lock lock(mutex_);
+            queue_.push_back(Request(std::move(handler), timeout_));
+
+            if (timer_.expires_at() == time_point::max()) {
+                timer_.expires_from_now(timeout_);
+                timer_.async_wait(boost::bind(&Queue::handle_timer, this, _1));
+            }
+        }
+    private:
+        void handle_timer(const boost::system::error_code& ec) {
+            if (ec == boost::asio::error::operation_aborted) {
+                return;
+            }
+
+            for (;;) {
+                boost::mutex::scoped_lock lock(mutex_);
+
+                if (queue_.empty()) {
+                    timer_.expires_at(time_point::max());
+                    return;
+                }
+
+                if (queue_.front().expiry_time_ >= std::chrono::steady_clock::now()) {
+                    timer_.expires_at(queue_.front().expiry_time_);
+                    timer_.async_wait(boost::bind(&Queue::handle_timer, this, _1));
+                    return;
+                }
+
+                auto handler = queue_.front().handler_;
+                queue_.pop_front();
+
+                lock.unlock();
+                timer_.get_io_service().post(handler);
+            }
+        }
+
+        std::deque<Request> queue_;
+        timer timer_;
+        time_duration timeout_;
+        boost::mutex mutex_;
+    };
+    mutable Queue queue_;
+};
+
+template <typename Impl>
+DelayDecorator<Impl> addDelay(Impl impl, boost::asio::io_service& ios,
+        typename DelayDecorator<Impl>::time_duration timeout) {
+    return DelayDecorator<Impl>(std::move(impl), ios, timeout);
 }
 
 }
