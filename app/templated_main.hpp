@@ -11,8 +11,6 @@
 #include <iostream>
 #include <string>
 
-#include <app/request_handlers/single_reply.hpp>
-
 #include <http/server/server.hpp>
 
 using namespace http::server;
