@@ -5,6 +5,7 @@
 #include <thread>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
 #include "stats.h"
 
 using boost::asio::ip::tcp;
@@ -205,44 +206,35 @@ private:
   std::string path_;
 };
 
-int main(int argc, char* argv[])
-{
-  try
-  {
-    if (argc != 3)
-    {
-      std::cout << "Usage: async_client <server> <path>\n";
+int main(int argc, char* argv[]) {
+  try {
+    if (argc != 4) {
+      std::cout << "Usage: async_client <server> <path> <nthreads>\n";
       std::cout << "Example:\n";
-      std::cout << "  client www.boost.org /LICENSE_1_0.txt\n";
+      std::cout << "  client www.boost.org /LICENSE_1_0.txt 64\n";
       return 1;
     }
-    // while(true) {
-    //   io_service.run();
-    // }
 
     std::vector<std::thread> thr_group;
     profiling::stats stats;
-    for (std::size_t i=1; i<32; ++i)
-      thr_group.emplace_back (
-        [&] 
-        { 
+    const std::size_t nthreads = boost::lexical_cast<std::size_t>(argv[3]);
+    for (std::size_t i=1; i<nthreads; ++i)
+      thr_group.emplace_back ( [&]  {
           boost::asio::io_service io_service;
           client c(io_service, argv[1], argv[2], stats);
-          try { io_service.run (); } 
-          catch (...) { abort (); }  
+          try {
+            io_service.run ();
+          } catch (...) {
+            abort ();
+          }
         }
       );
 
-    // try { io_service.run (); } 
-    // catch (...) { abort (); }
-
-    for (auto& thr : thr_group)
-    {
+    for (auto& thr : thr_group) {
       thr.join ();
     }
   }
-  catch (const std::exception& e)
-  {
+  catch (const std::exception& e) {
     std::cout << "Exception: " << e.what() << "\n";
   }
 
