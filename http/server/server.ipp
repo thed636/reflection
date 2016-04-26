@@ -14,8 +14,8 @@
 namespace http {
 namespace server {
 
-template<typename RH>
-server<RH>::server(const std::string& address, const std::string& port, RH request_handler)
+template<typename C>
+server<C>::server(const std::string& address, const std::string& port, handler_type request_handler)
     : io_service_(),
       signals_(io_service_),
       acceptor_(io_service_),
@@ -45,8 +45,8 @@ server<RH>::server(const std::string& address, const std::string& port, RH reque
     do_accept();
 }
 
-template<typename RH>
-void server<RH>::run() {
+template<typename C>
+void server<C>::run() {
     // The io_service::run() call will block until all asynchronous operations
     // have finished. While the server is running, there is always at least one
     // asynchronous operation outstanding: the asynchronous accept call waiting
@@ -54,8 +54,8 @@ void server<RH>::run() {
     io_service_.run();
 }
 
-template<typename RH>
-void server<RH>::do_accept() {
+template<typename C>
+void server<C>::do_accept() {
     acceptor_.async_accept(socket_, [this](boost::system::error_code ec) {
         // Check whether the server was stopped by a signal before this
         // completion handler had a chance to run.
@@ -72,8 +72,8 @@ void server<RH>::do_accept() {
         });
 }
 
-template<typename RH>
-void server<RH>::do_await_stop() {
+template<typename C>
+void server<C>::do_await_stop() {
     signals_.async_wait([this](boost::system::error_code /*ec*/, int /*signo*/) {
         // The server is stopped by cancelling all outstanding asynchronous
         // operations. Once all operations have finished the io_service::run()
