@@ -2,6 +2,7 @@
 #include <istream>
 #include <ostream>
 #include <string>
+#include <thread>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include "stats.h"
@@ -12,9 +13,11 @@ class client
 {
 public:
   client(boost::asio::io_service& io_service,
-      const std::string& server, const std::string& path)
+      const std::string& server, const std::string& path,
+      profiling::stats& stats)
     : resolver_(io_service),
       socket_(io_service),
+      stats_(stats),
       server_(server),
       path_(path)
   {
@@ -196,7 +199,7 @@ private:
   tcp::socket socket_;
   boost::asio::streambuf request_;
   boost::asio::streambuf response_;
-  profiling::stats stats_;
+  profiling::stats& stats_;
   std::unique_ptr<profiling::stats_sample> stats_sample_;
   std::string server_;
   std::string path_;
@@ -213,11 +216,29 @@ int main(int argc, char* argv[])
       std::cout << "  client www.boost.org /LICENSE_1_0.txt\n";
       return 1;
     }
+    // while(true) {
+    //   io_service.run();
+    // }
 
-    boost::asio::io_service io_service;
-    client c(io_service, argv[1], argv[2]);
-    while(true) {
-      io_service.run();
+    std::vector<std::thread> thr_group;
+    profiling::stats stats;
+    for (std::size_t i=1; i<32; ++i)
+      thr_group.emplace_back (
+        [&] 
+        { 
+          boost::asio::io_service io_service;
+          client c(io_service, argv[1], argv[2], stats);
+          try { io_service.run (); } 
+          catch (...) { abort (); }  
+        }
+      );
+
+    // try { io_service.run (); } 
+    // catch (...) { abort (); }
+
+    for (auto& thr : thr_group)
+    {
+      thr.join ();
     }
   }
   catch (const std::exception& e)
