@@ -31,18 +31,15 @@ public:
         OnMessage(Handler h) : h(std::move(h)), c(*this) {}
 
         void operator() (error_code e, optional<Message> m = optional<Message>()) {
-            h(e, std::move(m), c);
+            h(e, std::move(m), std::move(*this));
         }
         void operator() (optional<Message> m) {
-            h(error_code(), std::move(m), c);
+            h(error_code(), std::move(m), std::move(*this));
         }
         void operator() () {
             c();
         }
     };
-
-    template<typename Handler>
-    using Continuation = typename OnMessage<Handler>::Continuation;
 
     /**
      * This method is modeling heaviest query for all messages in mailbox
