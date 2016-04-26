@@ -20,3 +20,14 @@ target_link_libraries(handwritten_single_reply
   ${Boost_LIBRARIES}
   server
 )
+
+set(yajl_single_reply_SRC
+  "yajl_single_reply_main.cpp"
+)
+
+add_executable(yajl_single_reply ${yajl_single_reply_SRC})
+target_link_libraries(yajl_single_reply
+  ${Boost_LIBRARIES}
+  ${yajl_LIBRARIES}
+  server
+)
