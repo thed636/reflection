@@ -1,7 +1,7 @@
 #include "templated_main.hpp"
 
-#include <app/request_handlers/single_reply.hpp>
-#include <app/request_handlers/reply_collector.hpp>
+#include <app/detail/request_handler.hpp>
+#include <app/message_handlers/reply_collector.hpp>
 
 #include <model/reflection/message.h>
 
