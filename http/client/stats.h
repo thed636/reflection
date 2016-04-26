@@ -177,27 +177,25 @@ pretty_speed (double const& t)
 class stats_sample;
 
 template <typename Clock = chrono::high_resolution_clock>
-class basic_stats : boost::noncopyable
-{
+class basic_stats : boost::noncopyable {
   typedef Clock clock_type;
   typedef typename clock_type::time_point time_point;
   typedef typename clock_type::duration duration_type;
   typedef typename duration_type::rep ticks_type;
 
-	typedef acc::accumulator_set<std::size_t, 
+	typedef acc::accumulator_set<std::size_t,
 	      acc::stats<tag::sum, tag::mean, tag::min, tag::max>>
 	      msg_size_type;
 
-	typedef acc::accumulator_set<chrono::high_resolution_clock::duration::rep, 
+	typedef acc::accumulator_set<chrono::high_resolution_clock::duration::rep,
 	      acc::stats<tag::sum, tag::min, tag::max>>
 	      time_type;
 
-	typedef acc::accumulator_set<double, 
+	typedef acc::accumulator_set<double,
 	      acc::stats<tag::sum, tag::min, tag::max>>
 	      speed_type;
-	      
-	struct acc_type 
-	{
+
+	struct acc_type {
 	  std::size_t count = 0;
 	  msg_size_type size;
 	  time_type     time;
@@ -219,37 +217,31 @@ class basic_stats : boost::noncopyable
   unsigned long long total_messages_ = 0;
   unsigned long long total_size_ = 0;
 
-  static inline constexpr chrono::system_clock::duration 
-  defer_total_calculations () 
-  {
+  static inline constexpr chrono::system_clock::duration
+  defer_total_calculations () {
     return chrono::seconds (15);
   }
 
-  void
-  roll_acc (time_point const& now = clock_type::now ())
-  {
+  void roll_acc (time_point const& now = clock_type::now ()) {
     // duration between now and last slot
     duration_type duration_from_last_slot = now - last_slot_;
     std::size_t   slots = duration_from_last_slot / delta_size_;
 
-    if (slots > max_slots_) 
+    if (slots > max_slots_) {
       slots = max_slots_;
+    }
 
-    if (slots > 0)
-    {
+    if (slots > 0) {
       auto sys_now = chrono::system_clock::now ();
 
-      if (!start_time_set_)
-      {
+      if (!start_time_set_) {
         start_time_ = sys_now;
         start_time_set_ = true;
       }
 
       bool has_samples = !samples_.empty ();
 
-      if (has_samples && sys_now - start_time_ > 
-            defer_total_calculations ())
-      {
+      if (has_samples && sys_now - start_time_ > defer_total_calculations ()) {
         acc_type const& accu = samples_[0];
         total_messages_ += accu.count;
         total_size_ += acc::sum (accu.size);
@@ -257,8 +249,11 @@ class basic_stats : boost::noncopyable
 
       print (sys_now);
 
-      if (has_samples) samples_.rinsert (samples_.begin (), slots, acc_type ());
-      else samples_.push_back (acc_type ());
+      if (has_samples) {
+        samples_.rinsert (samples_.begin (), slots, acc_type ());
+      } else {
+        samples_.push_back (acc_type ());
+      }
 
       last_slot_ = now;
     }
@@ -272,8 +267,7 @@ public:
     , samples_ (max_slots)
   {}
   template <typename Rep, typename Period>
-  void log (chrono::duration<Rep,Period> const& dur, std::size_t size)
-  {
+  void log (chrono::duration<Rep,Period> const& dur, std::size_t size) {
     using chrono::duration;
     using chrono::duration_cast;
 
@@ -293,8 +287,7 @@ public:
   }
 
   void print (chrono::system_clock::time_point const& now = 
-      chrono::system_clock::now ())
-  {
+      chrono::system_clock::now ()) {
 
     std::cout <<
 "=============================================================================\n";
@@ -315,8 +308,7 @@ public:
       << "\n";
   }
 
-  void print (std::size_t deltas, char const* label = "") const
-  {
+  void print (std::size_t deltas, char const* label = "") const {
     std::size_t count = 0;
     std::size_t size_sum = 0; ticks_type time_sum = 0; double speed_sum = 0.0;
 
@@ -340,8 +332,7 @@ public:
   	  // std::lock_guard<std::mutex> lock (mux_);
 
   	  deltas = std::min (deltas, samples_.size ());
-  	  for (std::size_t i=0; i < deltas; ++i)
-      {
+  	  for (std::size_t i=0; i < deltas; ++i) {
         acc_type const& accu = samples_[i];
 
         count += accu.count;
@@ -364,8 +355,7 @@ public:
     deltas_period =
       duration_cast<duration<double>> (delta_size_ * deltas).count ();
 
-    if (count)
-    {
+    if (count) {
       size_avg = 1.0 * size_sum / count;
       time_avg = 1.0 * time_sum / count;
       speed_avg = speed_sum / count;
@@ -374,9 +364,7 @@ public:
       using chrono::duration;
 
       rps = 1.0 * count / deltas_period;
-    }
-    else
-    {
+    } else {
       size_avg = time_avg = speed_avg = 0.0;
       size_min = size_max = 0;
       time_min = time_max = 0;
@@ -414,8 +402,7 @@ public:
 
 typedef basic_stats<> stats;
 
-class stats_sample
-{
+class stats_sample {
 	template <class> friend class basic_stats;
 
 	stats& stats_;
@@ -433,20 +420,19 @@ public:
   stats_sample (stats_sample const&) = delete;
   stats_sample& operator= (stats_sample const&) = delete;
 
-  ~stats_sample ()
-  {
+  void adjust(std::size_t v) {
+    size_ += v;
+  }
+
+  ~stats_sample () {
   	auto dur = chrono::high_resolution_clock::now () - start_;
-    
     stats_.log (dur, size_);
   }
 };
 
 template <typename Clock>
-inline std::unique_ptr<stats_sample> 
-basic_stats<Clock>::sample (std::size_t sz)
-{ 
-	return std::unique_ptr<stats_sample> (
-	  new stats_sample (*this, sz)); 
+inline std::unique_ptr<stats_sample> basic_stats<Clock>::sample (std::size_t sz) {
+	return std::unique_ptr<stats_sample> ( new stats_sample (*this, sz));
 }
 
 }
