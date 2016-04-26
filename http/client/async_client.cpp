@@ -1,13 +1,3 @@
-//
-// async_client.cpp
-// ~~~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
 #include <iostream>
 #include <istream>
 #include <ostream>
@@ -70,8 +60,6 @@ private:
     if (!err)
     {
       endpoint_ = endpoint_iterator;
-      // Attempt a connection to each endpoint in the list until we
-      // successfully establish a connection.
       request();
     }
     else
@@ -147,6 +135,22 @@ private:
     }
   }
 
+  void handle_header(const std::string& ) {
+
+  }
+
+  void handle_response_part() {
+    response_.consume(response_.size());
+    // std::cout << &response_;
+  }
+
+  void read_content() {
+    boost::asio::async_read(socket_, response_,
+          boost::asio::transfer_at_least(1),
+          boost::bind(&client::handle_read_content, this,
+            boost::asio::placeholders::error));
+  }
+
   void handle_read_headers(const boost::system::error_code& err)
   {
     if (!err)
@@ -155,18 +159,14 @@ private:
       std::istream response_stream(&response_);
       std::string header;
       while (std::getline(response_stream, header) && header != "\r")
-        std::cout << header << "\n";
-      std::cout << "\n";
+        handle_header(header);
 
       // Write whatever content we already have to output.
       if (response_.size() > 0)
-        std::cout << &response_;
+        handle_response_part();
 
       // Start reading remaining data until EOF.
-      boost::asio::async_read(socket_, response_,
-          boost::asio::transfer_at_least(1),
-          boost::bind(&client::handle_read_content, this,
-            boost::asio::placeholders::error));
+      read_content();
     }
     else
     {
@@ -178,14 +178,8 @@ private:
   {
     if (!err)
     {
-      // Write all of the data that has been read so far.
-      std::cout << &response_;
-
-      // Continue reading remaining data until EOF.
-      boost::asio::async_read(socket_, response_,
-          boost::asio::transfer_at_least(1),
-          boost::bind(&client::handle_read_content, this,
-            boost::asio::placeholders::error));
+      handle_response_part();
+      read_content();
     }
     else if (err != boost::asio::error::eof)
     {
