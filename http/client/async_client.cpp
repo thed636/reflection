@@ -179,20 +179,24 @@ private:
 
 int main(int argc, char* argv[]) {
   try {
-    if (argc != 4) {
-      std::cout << "Usage: async_client <server> <path> <nthreads>\n";
+    if (argc != 5) {
+      std::cout << "Usage: async_client <server> <path> <nthreads> <nsessions per thread>\n";
       std::cout << "Example:\n";
-      std::cout << "  client www.boost.org /LICENSE_1_0.txt 64\n";
+      std::cout << "  client www.boost.org /LICENSE_1_0.txt 12 100\n";
       return 1;
     }
 
     std::vector<std::thread> thr_group;
     profiling::stats stats;
     const std::size_t nthreads = boost::lexical_cast<std::size_t>(argv[3]);
-    for (std::size_t i=1; i<nthreads; ++i) {
+    const std::size_t nsessions = boost::lexical_cast<std::size_t>(argv[4]);
+    for (std::size_t i=0; i<nthreads; ++i) {
       thr_group.emplace_back ( [&]  {
           boost::asio::io_service io_service;
-          client c(io_service, argv[1], argv[2], stats);
+          std::vector<std::shared_ptr<client>> c;
+          for(std::size_t j = 0; j < nsessions; ++j) {
+            c.emplace_back(std::make_shared<client>(io_service, argv[1], argv[2], stats));
+          }
           try {
             io_service.run ();
           } catch (...) {
