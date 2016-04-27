@@ -12,6 +12,7 @@
 #define HTTP_CONNECTION_MANAGER_HPP
 
 #include <set>
+#include <mutex>
 
 namespace http {
 namespace server {
@@ -41,6 +42,7 @@ public:
 private:
     /// The managed connections.
     std::set<connection_ptr> connections_;
+    std::mutex m_;
 };
 
 } // namespace server

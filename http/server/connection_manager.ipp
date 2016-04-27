@@ -17,18 +17,25 @@ connection_manager<C>::connection_manager() {
 
 template<typename C>
 void connection_manager<C>::start(connection_ptr c) {
-    connections_.insert(c);
+	{
+		std::lock_guard<std::mutex> lock (m_);
+    	connections_.insert(c);
+	}
     c->start();
 }
 
 template<typename C>
 void connection_manager<C>::stop(connection_ptr c) {
-    connections_.erase(c);
+	{
+		std::lock_guard<std::mutex> lock (m_);
+    	connections_.erase(c);
+    }
     c->stop();
 }
 
 template<typename C>
 void connection_manager<C>::stop_all() {
+	std::lock_guard<std::mutex> lock (m_);
     for (auto c : connections_)
         c->stop();
     connections_.clear();
