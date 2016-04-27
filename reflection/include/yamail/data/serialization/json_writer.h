@@ -90,7 +90,7 @@ public:
     }
 
     template <typename ... Args>
-        void onValue(long l, NamedItemTag<Args...> tag) {
+    void onValue(long l, NamedItemTag<Args...> tag) {
         addString(name(tag));
         onValue(l, SequenceItemTag{});
     }

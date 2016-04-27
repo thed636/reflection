@@ -1,5 +1,8 @@
 #include "templated_main.hpp"
 
+#include <app/detail/request_handler.hpp>
+#include <app/message_handlers/reply_collector.hpp>
+
 #include <sstream>
 
 template<typename Arr>
@@ -46,16 +49,14 @@ void print_array(std::ostream& os, Arr& array) {
 }
 
 int main(int argc, char* argv[]) {
-    return templated_main(
-            argc,
-            argv,
-            make_request_handler([](const model::Messages& msgs) {
-                        std::stringstream ss;
-                        ss << "{";
-                        ss << "\"messages\": ";
-                        print_array(ss, msgs);
-                        ss << "}";
-                        return ss.str();
-                    })
-    );
+    auto on_message_factory = make_reply_collector_factory([](const model::Messages& msgs) {
+        std::stringstream ss;
+        ss << "{";
+        ss << "\"messages\": ";
+        print_array(ss, msgs);
+        ss << "}";
+        return ss.str();
+    });
+    auto rh = make_request_handler( std::move(on_message_factory) );
+    return templated_main( argc, argv,std::move(rh) );
 }

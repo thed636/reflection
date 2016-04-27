@@ -4,20 +4,20 @@
 namespace http {
 namespace server {
 
-template <typename S>
-request_handler<S>::request_handler(S s) :
-        mailbox(model::dummyMailbox()), serializer(std::move(s)) {
+template <typename OnMF>
+request_handler<OnMF>::request_handler(OnMF on_message_factory) :
+        mailbox(model::dummyMailbox()), f(std::move(on_message_factory)) {
 }
 
-template <typename S>
-request_handler<S>::request_handler(request_handler&& other) :
-        mailbox(std::move(other.mailbox)), serializer(std::move(other.serializer)) {
+template <typename OnMF>
+request_handler<OnMF>::request_handler(request_handler&& other) :
+        mailbox(std::move(other.mailbox)), f(std::move(other.f)) {
 }
 
 
-template<typename S>
-template<typename OnReply>
-void request_handler<S>::handle_request(const request& req, OnReply handler) {
+template<typename OnMF>
+template<typename ConnectionHandler>
+void request_handler<OnMF>::handle_request(const request& req, ConnectionHandler&& handler) {
     // Decode url to path.
     std::string request_path;
     if (!url_decode(req.uri, request_path)) {
@@ -34,14 +34,14 @@ void request_handler<S>::handle_request(const request& req, OnReply handler) {
 
     //Dispatch request
     if (request_path == "/messages") {
-        mailbox.getMessages(make_reply_collector(std::move(handler), serializer));
+        mailbox.getMessages( f(std::forward<ConnectionHandler>(handler)) );
     } else {
         handler(reply::stock_reply(reply::not_found));
     }
 }
 
-template <typename S>
-bool request_handler<S>::url_decode(const std::string& in, std::string& out) {
+template <typename OnMF>
+bool request_handler<OnMF>::url_decode(const std::string& in, std::string& out) {
     out.clear();
     out.reserve(in.size());
     for (std::size_t i = 0; i < in.size(); ++i) {
@@ -65,16 +65,6 @@ bool request_handler<S>::url_decode(const std::string& in, std::string& out) {
         }
     }
     return true;
-}
-
-template <typename S>
-void request_handler<S>::fill_ok_reply(reply& rep) {
-    rep.status = reply::ok;
-    rep.headers.resize(2);
-    rep.headers[0].name = "Content-Length";
-    rep.headers[0].value = std::to_string(rep.content.size());
-    rep.headers[1].name = "Content-Type";
-    rep.headers[1].value = "application/json";
 }
 
 } // namespace server

@@ -11,13 +11,12 @@
 #include <iostream>
 #include <string>
 
-#include <app/request_handlers/single_reply.hpp>
-
 #include <http/server/server.hpp>
+#include <http/server/connection.hpp>
 
 using namespace http::server;
 
-template<typename RH>
+template<template<typename H> class Conn = connection, typename RH>
 int templated_main(int argc, char* argv[], RH&& request_handler) {
     try {
         // Check command line arguments.
@@ -31,7 +30,7 @@ int templated_main(int argc, char* argv[], RH&& request_handler) {
         }
 
         // Initialize the server.
-        auto s = make_server(argv[1], argv[2], std::forward<RH>(request_handler));
+        auto s = make_server<Conn>(argv[1], argv[2], std::forward<RH>(request_handler));
 
         // Run the server until stopped.
         s->run();

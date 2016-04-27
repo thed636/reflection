@@ -14,17 +14,17 @@
 #include <boost/asio.hpp>
 #include <string>
 #include "connection_manager.hpp"
-#include "connection.hpp"
 
 namespace http {
 namespace server {
 
 /// The top-level class of the HTTP server.
-template<typename RequestHandler>
+template<typename Connection>
 class server {
 public:
-    using conn = connection<RequestHandler>;
-    using conn_manager = connection_manager<conn>;
+    using conn = Connection;
+    using handler_type = typename conn::handler_type;
+    using conn_manager = typename conn::conn_manager;
 
     server(const server&) = delete;
     server& operator=(const server&) = delete;
@@ -32,7 +32,7 @@ public:
     /// Construct the server to listen on the specified TCP address and port, and
     /// serve up files from the given directory.
     explicit server(const std::string& address, const std::string& port,
-            RequestHandler request_handler);
+            handler_type request_handler);
 
     /// Run the server's io_service loop.
     void run();
@@ -60,16 +60,16 @@ private:
     boost::asio::ip::tcp::socket socket_;
 
     /// The handler for all incoming requests.
-    RequestHandler request_handler_;
+    handler_type request_handler_;
 };
 
-template<typename RH>
-using server_ptr = std::unique_ptr< server<RH> >;
+template<typename Conn>
+using server_ptr = std::unique_ptr< server<Conn> >;
 
-template<typename RH>
-server_ptr<RH> make_server(const std::string& address, const std::string& port, RH request_handler) {
-    return server_ptr<RH>(
-            new server<RH>(address, port, std::move(request_handler))
+template<template<typename H> class Conn, typename RH>
+server_ptr<Conn<RH>> make_server(const std::string& address, const std::string& port, RH&& request_handler) {
+    return server_ptr<Conn<RH>>(
+            new server<Conn<RH>>(address, port, std::forward<RH>(request_handler))
     );
 }
 

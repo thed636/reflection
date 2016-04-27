@@ -24,25 +24,22 @@ public:
 
     template <typename Handler>
     struct OnMessage {
-        using Continuation = typename Impl::template Continuation<OnMessage<Handler>>;
+        using Continuation = typename Impl::Continuation;
         Handler h;
         Continuation c;
 
-        OnMessage(Handler h) : h(std::move(h)), c(*this) {}
+        OnMessage(Handler h) : h(std::move(h)), c() {}
 
         void operator() (error_code e, optional<Message> m = optional<Message>()) {
-            h(e, std::move(m), c);
+            h(e, std::move(m), std::move(*this));
         }
         void operator() (optional<Message> m) {
-            h(error_code(), std::move(m), c);
+            h(error_code(), std::move(m), std::move(*this));
         }
         void operator() () {
-            c();
+            c(std::move(*this));
         }
     };
-
-    template<typename Handler>
-    using Continuation = typename OnMessage<Handler>::Continuation;
 
     /**
      * This method is modeling heaviest query for all messages in mailbox
@@ -89,12 +86,11 @@ public:
 		getMessages(std::move(h));
 	}
 
-	template<typename Handler>
 	struct Request : boost::asio::coroutine {
-	    Handler& h;
-	    Request(Handler& h) : boost::asio::coroutine(), h(h) {}
+	    Request() : boost::asio::coroutine() {}
 
-	    void operator()() {
+	    template<typename Handler>
+	    void operator()(Handler&& h) {
 	        static optional<Message> m = Message{
 	            Message::Id{"42-100500"},
 	            Message::Subject{"I love you Ozzy!"},
@@ -113,8 +109,7 @@ public:
 	    }
 	};
 
-	template<typename OnMessage>
-	using Continuation = Request<OnMessage>;
+	using Continuation = Request;
 };
 
 
