@@ -38,6 +38,9 @@ void fill(Message& proto_msg, model::Message&& msg) {
 }
 
 void fill(Messages& proto_msgs, model::Messages&& msgs) {
+    for( size_t i = 0; i < 4; ++i ) {
+        msgs.push_back(msgs[i]);
+    }
     for( auto&& m : msgs ) {
         Message* proto_m = proto_msgs.add_message();
         fill(*proto_m, std::move(m));
