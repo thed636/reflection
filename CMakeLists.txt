@@ -8,6 +8,7 @@ set(FLAGS
   "-fexceptions"
   "-pipe"
   "-std=c++11"
+  "-DBOOST_PP_VARIADICS=1"
 )
 
 foreach(FLAG ${FLAGS})
