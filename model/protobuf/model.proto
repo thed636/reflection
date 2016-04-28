@@ -1,0 +1,22 @@
+package yreflection.model;
+
+message Email {
+    optional string name = 1;
+    optional string address = 2;
+}
+
+message Recipient {
+    optional string type = 1;
+    optional Email email = 2;
+}
+
+message Message {
+    optional string id = 1;
+    optional string subject = 2;
+    optional string body = 3;
+    repeated Recipient recipients = 4;
+}
+
+message Messages {
+    repeated Message message = 1;
+}
