@@ -8,10 +8,10 @@
 
 BOOST_FUSION_ADAPT_STRUCT(
     model::Message,
-    (model::Message::Id, id)
-    (model::Message::Subject, subject)
-    (model::Message::Recipients, recipients)
-    (model::Message::Body, body)
+    id,
+    subject,
+    recipients,
+    body
 )
 
 inline yamail::data::serialization::yajl::Buffer serialize(const model::Messages& m) {

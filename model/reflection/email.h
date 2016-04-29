@@ -7,8 +7,8 @@
 
 BOOST_FUSION_ADAPT_STRUCT(
 	model::Email,
-    (model::Email::DisplayName, name)
-    (model::Email::Address, address)
+    name,
+    address
 )
 
 #endif /* MODEL_REFLECTION_EMAIL_H_ */

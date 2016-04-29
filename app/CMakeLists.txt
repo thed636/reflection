@@ -43,3 +43,13 @@ target_link_libraries(yreflection_chunked_reply
   server
 )
 
+set(protobuf_single_reply_SRC
+  "protobuf_single_reply_main.cpp"
+)
+
+add_executable(protobuf_single_reply ${protobuf_single_reply_SRC})
+target_link_libraries(protobuf_single_reply
+  ${Boost_LIBRARIES}
+  model
+  server
+)
