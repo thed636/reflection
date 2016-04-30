@@ -46,8 +46,8 @@ void chunked_connection<RH>::do_read() {
 }
 
 template<typename RH>
-template<typename Cont>
-void chunked_connection<RH>::operator()(std::string chunk, Cont&& cont) {
+template<typename Buffer, typename Cont>
+void chunked_connection<RH>::operator()(Buffer chunk, Cont&& cont) {
     const char crlf[] = { '\r', '\n' };
 
     std::vector<boost::asio::const_buffer> buffers;
@@ -56,16 +56,17 @@ void chunked_connection<RH>::operator()(std::string chunk, Cont&& cont) {
     }
     std::stringstream ss;
     ss << std::hex << chunk.size();
-    chunk_size_ = ss.str();
-    chunk_ = std::move(chunk);
-    buffers.push_back( boost::asio::buffer(chunk_size_) );
+    auto chunk_size = ss.str();
+    buffers.push_back( boost::asio::buffer(chunk_size) );
     buffers.push_back( boost::asio::buffer(crlf) );
-    buffers.push_back( boost::asio::buffer(chunk_) );
+    buffers.push_back( boost::asio::buffer(&chunk[0], chunk.size()) );
     buffers.push_back( boost::asio::buffer(crlf) );
 
     auto self(this->shared_from_this());
     boost::asio::async_write(socket_, buffers,
-            [this, self, c = std::forward<Cont>(cont)] (boost::system::error_code ec, std::size_t sent) mutable {
+            [this, self, chunk, chunk_size, c = std::forward<Cont>(cont)] (
+                    boost::system::error_code ec, std::size_t sent
+            ) mutable {
                 if (!ec) {
                     if (sent) {
                         reply_.reset();
@@ -76,7 +77,7 @@ void chunked_connection<RH>::operator()(std::string chunk, Cont&& cont) {
                         socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both,
                             ignored_ec);
                     }
-                } else if (ec != boost::asio::error::operation_aborted) {
+                } else if (chunk.size() || ec != boost::asio::error::operation_aborted) {
                     connection_manager_.stop(self);
                 }
             });

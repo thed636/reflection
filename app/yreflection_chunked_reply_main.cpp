@@ -8,9 +8,11 @@
 #include <http/server/chunked_connection.hpp>
 
 int main(int argc, char* argv[]) {
-    auto on_message_factory = make_chunked_reply_formatter_factory([](const model::Message& m) {
-        return yamail::data::serialization::toJson(m);
-    });
+    auto on_message_factory = make_chunked_reply_formatter_factory(
+            yamail::data::serialization::toChunkedJson<model::Message>(
+                yamail::data::reflection::namedItemTag(std::string("messages"))
+            )
+    );
     auto rh = make_request_handler( std::move(on_message_factory) );
     return templated_main<chunked_connection>( argc, argv, std::move(rh) );
 }

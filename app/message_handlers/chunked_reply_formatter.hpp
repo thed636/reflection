@@ -42,10 +42,10 @@ struct chunked_reply_formatter {
                 handler(ok_reply());
             }
         }
-        if (e || !m) {
+        if (e) {
             handler();
         } else {
-            handler(serializer(*m), std::forward<Continuation>(cont));
+            handler(serializer(std::move(m)), std::forward<Continuation>(cont));
         }
     }
 };

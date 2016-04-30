@@ -63,12 +63,13 @@ private:
         reply_ = std::move(rep);
     }
 
-    void operator()(std::string chunk = std::string()) {
-        (*this)(std::move(chunk), [](){});
+    template<typename Buffer = std::string>
+    void operator()(Buffer chunk = Buffer()) {
+        (*this)(chunk, [](){});
     }
 
-    template<typename Cont>
-    void operator()(std::string chunk, Cont&& cont);
+    template<typename Buffer, typename Cont>
+    void operator()(Buffer chunk, Cont&& cont);
 
     /// Socket for the connection.
     boost::asio::ip::tcp::socket socket_;

@@ -207,6 +207,7 @@ private:
     std::string defaultValueName = "value";
     Handle gen;
 };
+
 } // namespace yajl
 
 template <typename T>
@@ -221,6 +222,69 @@ inline yajl::Buffer toJson(const T& v, const std::string& rootName) {
     auto h = yajl::createGenerator();
     yajl::Writer(h).apply(v, namedItemTag(rootName));
     return yajl::Buffer(h);
+}
+
+template <typename T, typename Tag = SequenceItemTag>
+struct JsonChunks {
+    JsonChunks(Tag tag = Tag{}) : gen(yajl::createGenerator()), tag(tag) {
+    }
+
+    JsonChunks(const JsonChunks& other) = default;
+    JsonChunks(JsonChunks&& other) = default;
+
+    yajl::Handle gen;
+    Tag tag;
+    bool firstCall = true;
+
+    template<typename Tg>
+    void onStart(Tg tg) {
+        yajl::checkError( yajl_gen_map_open(gen.get()) );
+        yajl::checkError(
+            yajl_gen_string(
+                gen.get(),
+                reinterpret_cast<const unsigned char*>(name(tg).c_str()),
+                name(tg).size()
+            )
+        );
+        onStart(SequenceItemTag{});
+    }
+
+    void onStart(SequenceItemTag) {
+        yajl::checkError( yajl_gen_array_open(gen.get()) );
+    }
+
+    template<typename Tg>
+    void onEnd(Tg) {
+        onEnd(SequenceItemTag{});
+        yajl::checkError( yajl_gen_map_close(gen.get()) );
+    }
+
+    void onEnd(SequenceItemTag) {
+        yajl::checkError( yajl_gen_array_close(gen.get()) );
+    }
+
+    yajl::Buffer operator()(const boost::optional<T>& v) {
+        yajl_gen_clear(gen.get());
+        auto writer = yajl::Writer(gen);
+
+        if( firstCall ) {
+            onStart(tag);
+            firstCall = false;
+        }
+
+        if( v ) {
+            writer.apply(*v);
+        } else {
+            onEnd(tag);
+        }
+
+        return yajl::Buffer(gen);
+    }
+};
+
+template <typename T, typename Tag = SequenceItemTag>
+JsonChunks<T, Tag> toChunkedJson(Tag tag) {
+    return JsonChunks<T, Tag>(tag);
 }
 
 }}}
