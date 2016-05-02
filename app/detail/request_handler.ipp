@@ -35,6 +35,10 @@ void request_handler<OnMF>::handle_request(const request& req, ConnectionHandler
     //Dispatch request
     if (request_path == "/messages") {
         mailbox.getMessages( f(std::forward<ConnectionHandler>(handler)) );
+    } else if (request_path == "/messages/id") {
+        mailbox.getMessages( model::Message::Id(), f(std::forward<ConnectionHandler>(handler)) );
+    } else if (request_path == "/messages/recipient") {
+        mailbox.getMessages( model::Recipient(), f(std::forward<ConnectionHandler>(handler)) );
     } else {
         handler(reply::stock_reply(reply::not_found));
     }
