@@ -109,8 +109,12 @@ inline std::string genRandomBody(const std::size_t len) {
 
 inline std::vector<std::string> genRandomBodiesVector(const std::size_t len) {
     std::vector<std::string> retval(len, "");
+    std::default_random_engine generator;
+    std::normal_distribution<double> distribution(9.0, 3.0);
     for (std::size_t i = 0; i < len; ++i) {
-        retval[i] = genRandomBody(getRandom(1000, 19000));
+        auto kb = distribution(generator);
+        for(; kb<1. || kb>18.; kb = distribution(generator));
+        retval[i] = genRandomBody(kb*1024);
     }
     return retval;
 }

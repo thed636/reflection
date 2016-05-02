@@ -24,7 +24,7 @@ void fill(Recipient& proto_rcpt, model::Recipient&& rcpt) {
 #define MOVE_STR_TO_PROTO(proto, obj, field) \
     std::string* heaped_##field = new std::string(); \
     heaped_##field->swap(obj.field); \
-    proto.set_allocated_id( heaped_##field );
+    proto.set_allocated_##field( heaped_##field );
 
 void fill(Message& proto_msg, model::Message&& msg) {
     MOVE_STR_TO_PROTO(proto_msg, msg, id);
@@ -38,9 +38,6 @@ void fill(Message& proto_msg, model::Message&& msg) {
 }
 
 void fill(Messages& proto_msgs, model::Messages&& msgs) {
-    for( size_t i = 0; i < 4; ++i ) {
-        msgs.push_back(msgs[i]);
-    }
     for( auto&& m : msgs ) {
         Message* proto_m = proto_msgs.add_message();
         fill(*proto_m, std::move(m));
