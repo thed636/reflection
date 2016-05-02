@@ -29,3 +29,5 @@
 
 .DS_Store
 
+#Protobuf generated headers
+*.pb.h
