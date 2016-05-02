@@ -73,8 +73,7 @@ public:
     }
 };
 
-
-inline std::string genRandomBody(const std::size_t len) {
+inline std::string genRandomWord(const std::size_t len) {
     static const char alphanum[] =
         "0123456789"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -91,10 +90,34 @@ inline std::size_t getRandom(std::size_t min, std::size_t max) {
     return min + (rand() % (std::size_t)(max - min + 1));
 }
 
-inline std::string genRandomBody() {
-    const std::size_t minLen = 1000;
-    const std::size_t maxLen = 19000;
-    return genRandomBody(getRandom(minLen, maxLen));
+inline std::vector<std::string> genRandomWordsVector(const std::size_t len) {
+    std::vector<std::string> retval(len, "");
+    for (std::size_t i = 0; i < len; ++i) {
+        retval[i] = genRandomWord(getRandom(2, 15));
+    }
+    return retval;
+}
+
+inline std::string genRandomBody(const std::size_t len) {
+    static std::vector<std::string> words = genRandomWordsVector(1000);
+    std::string retval;
+    for (; retval.length() < len;) {
+        retval += words[getRandom(0, words.size()-1)] + ' ';
+    }
+    return retval;
+}
+
+inline std::vector<std::string> genRandomBodiesVector(const std::size_t len) {
+    std::vector<std::string> retval(len, "");
+    for (std::size_t i = 0; i < len; ++i) {
+        retval[i] = genRandomBody(getRandom(1000, 19000));
+    }
+    return retval;
+}
+
+inline const std::string & genRandomBody() {
+    static std::vector<std::string> bodies = genRandomBodiesVector(1000);
+    return bodies[getRandom(0, bodies.size()-1)];
 }
 
 /**
