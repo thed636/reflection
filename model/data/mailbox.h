@@ -8,6 +8,8 @@
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/yield.hpp>
 
+#include <random>
+
 namespace model {
 
 using boost::system::error_code;
@@ -131,44 +133,23 @@ class DummyImpl {
 public:
 	template <typename OnMessageFactory>
 	void getMessages(OnMessageFactory f) const {
-	    f(MultiplyRequest{getRandom(100, 1000)})();
+	    f(Request{getRandom(100, 1000)})();
 	}
 
 	template <typename OnMessageFactory>
 	void getMessages(const Message::Id& /*id*/, OnMessageFactory f) const {
-		f(SingleMessageRequest())();
+		f(Request())();
 	}
 
 	template <typename OnMessageFactory>
 	void getMessages(const Recipient& /*r*/, OnMessageFactory f) const {
-		f(MultiplyRequest{getRandom(1, 10)})();
+		f(Request{getRandom(1, 10)})();
 	}
 
-    struct SingleMessageRequest : boost::asio::coroutine {
-
-        template<typename Handler>
-        void operator()(Handler&& h) {
-            optional<Message> m = Message{
-                Message::Id{"42-100500"},
-                Message::Subject{"I love you Ozzy!"},
-                Message::Recipients{
-                    Recipient{Recipient::Type::from, Email{"Vasya Pupkin", "vasya@yandex.ru"}},
-                    Recipient{Recipient::Type::to, Email{"Ozzy Osbourne", "ozzy@gmail.com"}},
-                },
-                Message::Body{genRandomBody()}
-            };
-
-            reenter(*this) {
-                yield h(m);
-                yield h(optional<Message>());
-            }
-        }
-    };
-
-	struct MultiplyRequest : boost::asio::coroutine {
+	struct Request : boost::asio::coroutine {
         std::size_t count;
 
-        MultiplyRequest(std::size_t count) : count(count) {}
+        Request(std::size_t count = 1) : count(count) {}
 
 	    template<typename Handler>
 	    void operator()(Handler&& h) {
