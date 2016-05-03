@@ -226,22 +226,28 @@ inline yajl::Buffer toJson(const T& v, const std::string& rootName) {
 
 template <typename T, typename Tag = SequenceItemTag>
 struct JsonChunks {
-    JsonChunks(Tag tag = Tag{}) : gen(yajl::createGenerator()), tag(tag) {
+    JsonChunks(Tag tag = Tag{}) : tag(tag) {
     }
 
     JsonChunks(const JsonChunks& other) = default;
     JsonChunks(JsonChunks&& other) = default;
 
-    yajl::Handle gen;
+    yajl::Handle handle_;
     Tag tag;
     bool firstCall = true;
 
+    yajl::Handle handle() {
+        if(handle_ == nullptr) {
+             handle_ = yajl::createGenerator();
+        }
+        return handle_;
+    }
     template<typename Tg>
     void onStart(Tg tg) {
-        yajl::checkError( yajl_gen_map_open(gen.get()) );
+        yajl::checkError( yajl_gen_map_open(handle().get()) );
         yajl::checkError(
             yajl_gen_string(
-                gen.get(),
+                handle().get(),
                 reinterpret_cast<const unsigned char*>(name(tg).c_str()),
                 name(tg).size()
             )
@@ -250,22 +256,22 @@ struct JsonChunks {
     }
 
     void onStart(SequenceItemTag) {
-        yajl::checkError( yajl_gen_array_open(gen.get()) );
+        yajl::checkError( yajl_gen_array_open(handle().get()) );
     }
 
     template<typename Tg>
     void onEnd(Tg) {
         onEnd(SequenceItemTag{});
-        yajl::checkError( yajl_gen_map_close(gen.get()) );
+        yajl::checkError( yajl_gen_map_close(handle().get()) );
     }
 
     void onEnd(SequenceItemTag) {
-        yajl::checkError( yajl_gen_array_close(gen.get()) );
+        yajl::checkError( yajl_gen_array_close(handle().get()) );
     }
 
     yajl::Buffer operator()(const boost::optional<T>& v) {
-        yajl_gen_clear(gen.get());
-        auto writer = yajl::Writer(gen);
+        yajl_gen_clear(handle().get());
+        auto writer = yajl::Writer(handle());
 
         if( firstCall ) {
             onStart(tag);
@@ -278,7 +284,7 @@ struct JsonChunks {
             onEnd(tag);
         }
 
-        return yajl::Buffer(gen);
+        return yajl::Buffer(handle());
     }
 };
 

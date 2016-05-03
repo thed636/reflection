@@ -45,7 +45,11 @@ struct chunked_reply_formatter {
         if (e) {
             handler();
         } else {
-            handler(serializer(std::move(m)), std::forward<Continuation>(cont));
+            if(m) {
+                handler(serializer(std::move(m)), std::forward<Continuation>(cont));
+            } else {
+                handler(serializer(std::move(m)), [h=handler]() mutable {h(std::string(),[](void){});});
+            }
         }
     }
 };

@@ -64,11 +64,11 @@ void chunked_connection<RH>::operator()(Buffer chunk, Cont&& cont) {
 
     auto self(this->shared_from_this());
     boost::asio::async_write(socket_, buffers,
-            [this, self, chunk, chunk_size, c = std::forward<Cont>(cont)] (
-                    boost::system::error_code ec, std::size_t sent
+            [this, self, chunk_size = chunk.size(), c = std::forward<Cont>(cont)] (
+                    boost::system::error_code ec, std::size_t /*sent*/
             ) mutable {
                 if (!ec) {
-                    if (sent) {
+                    if (chunk_size) {
                         reply_.reset();
                         c();
                     } else {
@@ -77,7 +77,7 @@ void chunked_connection<RH>::operator()(Buffer chunk, Cont&& cont) {
                         socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both,
                             ignored_ec);
                     }
-                } else if (chunk.size() || ec != boost::asio::error::operation_aborted) {
+                } else if (chunk_size || ec != boost::asio::error::operation_aborted) {
                     connection_manager_.stop(self);
                 }
             });
