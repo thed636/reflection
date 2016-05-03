@@ -77,7 +77,8 @@ void chunked_connection<RH>::operator()(Buffer chunk, Cont&& cont) {
                         socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both,
                             ignored_ec);
                     }
-                } else if (chunk_size || ec != boost::asio::error::operation_aborted) {
+                }
+                if (!chunk_size && ec != boost::asio::error::operation_aborted) {
                     connection_manager_.stop(self);
                 }
             });
