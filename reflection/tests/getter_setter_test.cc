@@ -64,3 +64,25 @@ TEST(GetterSetterTest, deserializeStructWithMapFromJson_sameObject) {
     ASSERT_TRUE(obj == deserialized);
 }
 
+TEST(GetterSetterTestOldInterface, deserializeStructWithMapFromJson_sameObject) {
+    ClassWithMap obj;
+    obj.setTitle("object");
+
+    StringMap dict;
+    dict["k1"] = "v1";
+    dict["k2"] = "v2";
+    dict["k3"] = "v3";
+    obj.setDict(dict);
+
+    JsonWriter<ClassWithMap> jsonWriter(obj);
+    const std::string json = jsonWriter.result();
+
+    std::istringstream jsonStream(json);
+    boost::property_tree::ptree tree;
+    boost::property_tree::json_parser::read_json(jsonStream, tree);
+    PtreeReader<ClassWithMap> ptreeReader(tree);
+    const ClassWithMap deserialized = ptreeReader.result();
+
+    ASSERT_TRUE(obj == deserialized);
+}
+
