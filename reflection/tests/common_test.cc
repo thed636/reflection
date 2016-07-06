@@ -14,6 +14,7 @@
 
 #include <yamail/data/serialization/ptree_writer.h>
 #include <yamail/data/serialization/json_writer.h>
+#include <yamail/data/serialization/xml_writer.h>
 
 #include <yamail/data/deserialization/ptree_reader.h>
 
@@ -320,6 +321,76 @@ TEST(ReflectionTest, serializeCStructJson) {
         "\"optVector1\":[]"
 "}";
     ASSERT_EQ(expectedJson, r.str());
+}
+
+TEST(ReflectionTest, serializeCStructXml) {
+    CStruct cObj;
+    init( cObj );
+    auto xml = yamail::data::serialization::toXml(cObj);
+
+    const std::string expectedXml =
+"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+"<bObj>"
+"<intItem>100</intItem>"
+"<aObjArray>"
+    "<value>"
+        "<floatItem>42.5</floatItem>"
+        "<someContainer>"
+            "<value>true</value>"
+            "<value>false</value>"
+        "</someContainer>"
+        "<count>20</count>"
+    "</value>"
+    "<value>"
+        "<floatItem>42.5</floatItem>"
+        "<someContainer>"
+            "<value>true</value>"
+            "<value>false</value>"
+        "</someContainer>"
+        "<count>20</count>"
+    "</value>"
+    "<value>"
+        "<floatItem>42.5</floatItem>"
+        "<someContainer>"
+            "<value>true</value>"
+            "<value>false</value>"
+        "</someContainer>"
+        "<count>20</count>"
+    "</value>"
+"</aObjArray>"
+"<stringMap>"
+    "<key1>value1</key1>"
+    "<key2>value2</key2>"
+    "<key3/>"
+    "<key4/>"
+"</stringMap>"
+"<intMatrix>"
+    "<value>"
+        "<value>1</value>"
+        "<value>2</value>"
+    "</value>"
+    "<value>"
+        "<value>3</value>"
+        "<value>4</value>"
+        "<value>5</value>"
+    "</value>"
+    "<value>"
+        "<value>6</value>"
+        "<value>7</value>"
+        "<value>8</value>"
+        "<value>9</value>"
+    "</value>"
+    "<value>"
+        "<value>10</value>"
+    "</value>"
+"</intMatrix>"
+"</bObj>"
+"<doubleItem>14</doubleItem>"
+"<boolItem>true</boolItem>"
+"<optVector1/>\n"
+;
+
+    ASSERT_EQ(expectedXml, xml.str());
 }
 
 TEST(ReflectionTest, serializeDStructJson) {

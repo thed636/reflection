@@ -16,6 +16,10 @@ foreach(FLAG ${FLAGS})
 endforeach()
 
 find_package(Threads REQUIRED)
+find_package(LibXml2 REQUIRED)
+message(STATUS "libxml2 include dir:" ${LIBXML2_INCLUDE_DIR})
+include_directories(${LIBXML2_INCLUDE_DIR})
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${LIBXML2_DEFINITIONS})
 
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
@@ -29,7 +33,7 @@ find_package(Boost REQUIRED COMPONENTS
   context
   chrono
 )
-
+message(STATUS "Boost include dir:" ${Boost_INCLUDE_DIRS})
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 
