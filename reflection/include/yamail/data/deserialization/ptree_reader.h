@@ -7,10 +7,10 @@ namespace yamail { namespace data { namespace deserialization {
 
 template<typename T>
 class PtreeReader {
-	boost::property_tree::ptree & src;
+    boost::property_tree::ptree & src;
 public:
-	PtreeReader(boost::property_tree::ptree & src) : src(src) {}
-	T result() const { return fromPtree<T>(src); }
+    PtreeReader(boost::property_tree::ptree & src) : src(src) {}
+    T result() const { return fromPtree<T>(src); }
 };
 
 }}}

@@ -12,7 +12,7 @@ using namespace yamail::data::reflection;
 
 using BufferHandle = std::shared_ptr<xmlBuffer>;
 
-inline static BufferHandle createBuffer() { 
+inline static BufferHandle createBuffer() {
     BufferHandle retval(xmlBufferCreate(), xmlBufferFree);
     if(retval == nullptr) {
         throw std::runtime_error("xmlBufferCreate failed");
@@ -26,7 +26,7 @@ public:
     using iterator = const_iterator;
 
     Buffer(BufferHandle hh) : h(std::move(hh)) {}
-    const_iterator begin() const noexcept { 
+    const_iterator begin() const noexcept {
         return !(*this) ? nullptr : reinterpret_cast<const_iterator>(h->content);
     }
     const_iterator end() const noexcept { return begin() + size(); }
@@ -36,7 +36,9 @@ public:
     std::string str() const { return std::string{begin(), end()}; }
     operator const char* () const noexcept { return c_str(); }
     operator std::string () const { return str(); }
-    bool operator !() const noexcept { return h == nullptr || h->content == nullptr; }
+    bool operator !() const noexcept {
+        return h == nullptr || h->content == nullptr;
+    }
 
 private:
     BufferHandle h;
@@ -77,21 +79,23 @@ public:
         }
     }
 private:
-    using Handle = std::unique_ptr<xmlTextWriter, typename std::add_pointer<decltype(xmlFreeTextWriter)>::type>;
+    using Handle = std::unique_ptr<xmlTextWriter,
+            typename std::add_pointer<decltype(xmlFreeTextWriter)>::type>;
     BufferHandle buf;
     Handle h;
     std::stringstream s;
 
     static Handle createHandle(const BufferHandle& buf) {
         if(buf == nullptr) {
-            throw std::invalid_argument("TextWriter::createHandle(): BufferHandle can not be nullptr");
+            throw std::invalid_argument(
+                    "TextWriter::createHandle(): BufferHandle can not be nullptr");
         }
         Handle retval(xmlNewTextWriterMemory( buf.get(), 0), &xmlFreeTextWriter);
         if(retval == nullptr) {
             throw std::runtime_error("xmlNewTextWriterMemory failed");
         }
         return retval;
-    }    
+    }
 
     static void check(int errorCode) {
         if ( errorCode < 0 ) {
@@ -193,7 +197,7 @@ private:
 template <typename T, typename Tag>
 inline Buffer toXml(const T& v, Tag tag) {
     auto buffer = createBuffer();
-    auto textWriter = TextWriter(buffer);
+    TextWriter textWriter(buffer);
     Writer(textWriter).apply(v, tag);
     return buffer;
 }

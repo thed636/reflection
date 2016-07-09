@@ -7,7 +7,7 @@ namespace yamail { namespace data { namespace deserialization {
 
 template<typename T>
 class JsonReader{
-	const std::string& json;
+    const std::string& json;
 public:
     explicit JsonReader(const std::string& json) : json(json) {}
     T result() const { return fromJson<T>(json); }

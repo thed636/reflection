@@ -7,7 +7,7 @@ namespace yamail { namespace data { namespace serialization {
 
 template<typename T>
 class PtreeWriter {
-	const T & value;
+    const T & value;
 public:
     explicit PtreeWriter ( const T & value ) : value(value) {}
     boost::property_tree::ptree result() { return toPtree(value); }

@@ -35,7 +35,10 @@ class AClass {
     size_t count;
 };
 
-BOOST_FUSION_ADAPT_STRUCT( AClass, (float, floatItem) (std::deque<bool>, someContainer) ( size_t, count) )
+BOOST_FUSION_ADAPT_STRUCT( AClass,
+        (float, floatItem)
+        (std::deque<bool>, someContainer)
+        ( size_t, count) )
 
 bool operator==( const AClass& lhs, const AClass& rhs ) {
     return lhs.floatItem == rhs.floatItem
@@ -89,8 +92,11 @@ bool operator==( const BStruct& lhs, const BStruct& rhs ) {
             ;//&& lhs.stringMap == rhs.stringMap;
 }
 
-BOOST_FUSION_ADAPT_STRUCT( BStruct, ( int, intItem) (BStruct::TAObjArray , aObjArray)
-            (StringMap, stringMap) (BStruct::TIntMatrix, intMatrix) )
+BOOST_FUSION_ADAPT_STRUCT( BStruct,
+        ( int, intItem)
+        (BStruct::TAObjArray , aObjArray)
+        (StringMap, stringMap)
+        (BStruct::TIntMatrix, intMatrix) )
 
 BOOST_FUSION_DEFINE_STRUCT(() , CStruct,
     ( BStruct, bObj)
@@ -144,9 +150,9 @@ typedef std::pair<std::string, int> IntPair;
 typedef std::pair<std::string, std::string> StringPair;
 typedef std::pair<std::string, StringMap> StringMapPair;
 
-BOOST_FUSION_ADAPT_ADT(DStruct,
-    (IntPair, IntPair, YR_GET_WITH_NAME(getNum), YR_CALL_SET_WITH_NAME(setNum) )
-    (StringPair, StringPair, YR_GET_WITH_NAME(getStr), YR_CALL_SET_WITH_NAME(setStr) ) )
+YREFLECTION_ADAPT_ADT(DStruct,
+        YREFLECTION_GETSET(int, Num)
+        YREFLECTION_GETSET(std::string, Str) )
 
 using namespace testing;
 
@@ -398,7 +404,7 @@ TEST(ReflectionTest, serializeDStructJson) {
     dObj.setStr("qwe");
     dObj.setNum(123);
     const auto r = yamail::data::serialization::toJson(dObj);
-    const std::string expectedJson = "{\"getNum\":123,\"getStr\":\"qwe\"}";
+    const std::string expectedJson = "{\"Num\":123,\"Str\":\"qwe\"}";
     ASSERT_EQ(expectedJson, r.str());
 }
 

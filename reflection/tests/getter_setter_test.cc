@@ -5,6 +5,8 @@
 #include <yamail/data/serialization/json_writer.h>
 #include <yamail/data/deserialization/ptree_reader.h>
 
+
+
 typedef std::map<std::string,std::string> StringMap;
 typedef std::pair<std::string, std::string> StringPair;
 typedef std::pair<std::string, StringMap> StringMapPair;
@@ -39,9 +41,32 @@ private:
     StringMap _dict;
 };
 
-BOOST_FUSION_ADAPT_ADT(ClassWithMap,
-    (StringPair, StringPair, YR_CALL_WITH_NAME(ClassWithMap::getTitle), YR_CALL_SET_WITH_NAME(ClassWithMap::setTitle) )
-    (StringMapPair, StringMapPair, YR_CALL_WITH_NAME(ClassWithMap::getDict), YR_CALL_SET_WITH_NAME(ClassWithMap::setDict) )
+class ClassWithProperties {
+public:
+    void title(const std::string& v) { _title = v; }
+
+    const std::string& title() const { return _title;}
+
+    void dict(const StringMap& v) { _dict = v; }
+
+    const StringMap& dict() const { return _dict; }
+
+    bool operator==(const ClassWithProperties& other) const {
+        return title() == other.title() && dict() == other.dict();
+    }
+private:
+    std::string _title;
+    StringMap _dict;
+};
+
+YREFLECTION_ADAPT_ADT(ClassWithMap,
+    YREFLECTION_GETSET(std::string, Title)
+    YREFLECTION_GETSET(StringMap, Dict)
+)
+
+YREFLECTION_ADAPT_ADT(ClassWithProperties,
+    YREFLECTION_PROPERTY(std::string, title)
+    YREFLECTION_PROPERTY(StringMap, dict)
 )
 
 TEST(GetterSetterTest, deserializeStructWithMapFromJson_sameObject) {
@@ -55,6 +80,7 @@ TEST(GetterSetterTest, deserializeStructWithMapFromJson_sameObject) {
     obj.setDict(dict);
 
     const auto json = toJson(obj).str();
+    std::cout << json << std::endl;
 
     std::istringstream jsonStream(json);
     boost::property_tree::ptree tree;

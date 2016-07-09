@@ -7,10 +7,13 @@ namespace yamail { namespace data { namespace serialization {
 
 template<typename T>
 class JsonWriter {
-    const T& value;
+    yajl::Buffer buf;
 public:
-    JsonWriter(const T& value) : value(value) {}
-    std::string result () const { return toJson(value); }
+    JsonWriter(const T& v)
+    : buf(::yamail::data::serialization::toJson(v)) {}
+    JsonWriter(const T& v, const std::string & name)
+    : buf(::yamail::data::serialization::toJson(v, name)) {}
+    std::string result () const { return buf.str(); }
 };
 
 }}}

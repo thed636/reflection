@@ -129,9 +129,19 @@ public:
         addString(s);
     }
 
+    template<typename ...Args>
+    void onValue(const char* s, NamedItemTag<Args...> tag) {
+        addString(name(tag));
+        onValue(s, SequenceItemTag{});
+    }
+
+    void onValue(const char* s, SequenceItemTag) {
+        addString(s);
+    }
+
     template<typename Value, typename Tag>
     void onValue(const Value& p, Tag tag) {
-        onValue ( boost::lexical_cast<std::string>(p), tag);
+        onValue ( std::to_string(p), tag);
     }
 
     template<typename Struct, typename ... Args>
@@ -202,6 +212,12 @@ private:
         checkError( yajl_gen_string(gen.get(),
                     reinterpret_cast<const unsigned char*>(str.c_str()),
                     str.size()) );
+    }
+
+    void addString ( const char * str ) {
+        checkError( yajl_gen_string(gen.get(),
+                    reinterpret_cast<const unsigned char*>(str),
+                    std::strlen(str)) );
     }
 
     std::string defaultValueName = "value";
